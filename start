@@ -1,0 +1,163 @@
+#!/bin/bash
+
+# demo1 | Version: test_05-10-2019
+
+# apagar o projeto antigo ou salvar ?* I/O
+#if [ -d .build/" ]; then rm -rf .build/ && mkdir .build; else mkdir .build; fi
+
+width=$(xwininfo -root | awk '$1=="Width:" {print $2}')
+height=$(xwininfo -root | awk '$1=="Height:" {print $2}')
+
+# linaro toolchain gcc.
+mirror_linaro="https://releases.linaro.org/components/toolchain/binaries/"
+
+# mirror: u-boot (universal bootloader).
+#u-boot="https://ftp.denx.de/pub/u-boot/"
+
+# local source build.
+temp=".build"
+
+# get all versions of linaro gcc compiler.
+versions=$(curl -s "$mirror_linaro" | grep binaries)
+versions=$(echo "${versions//}" | sed -e "s/<a href=\"\/components\/toolchain\/binaries\///g" | sed 's/\/"//g' | sort)
+
+# GCC (arm-linux-gnueabihf).
+cross_compiler(){
+
+  pkglist=""
+
+  for pkg in $versions; do pkglist="$pkglist FALSE $pkg"; done
+
+	choices=`zenity --title="Graphical Tool for CROSS Compile"\
+		--width=$width --height=$height --text="Choose item:"\
+                --list --column="Selected" --column="Linaro Toolchain Package"\
+                --radiolist $pkglist --ok-label="Build Source" --cancel-label="Back" 2>/dev/null`
+
+	if [ $? -eq 0 ]; then
+                IFS="|"
+        	for choice in $choices
+        	do
+			package=$(curl -s $mirror_linaro$choice/arm-linux-gnueabihf/ | grep -E '*x86.*_arm-linux-gnueabihf.tar.xz"')
+			package=$(echo $package | sed -e "s/<a href=\"\/components\/toolchain\/binaries\/"$choice"\/arm-linux-gnueabihf//g")
+			package=${package%?};
+			package=$(echo ${package// /} | cut -c 2-)
+
+			cd $temp
+
+			wget $mirror_linaro$choice/arm-linux-gnueabihf/$package
+			tar -xvf $package
+                        dir=$(ls -d */)
+                        bin="bin/arm-linux-gnueabihf-"
+                        pwd=$(pwd)
+                        echo "CC=$pwd/$dir$bin" >> ~/.bash_profile
+
+			exit 1
+			#tratamento shell.!
+			#source ~/.bash_profile
+
+			#zenity --title=Config Manual" --width=500 --height=100\
+			#       --warning --text update this file: ~/.bash_profile and test GCC ARM support: ${CC}gcc --version"
+		done
+	        IFS=""
+
+        	else
+            		sleep 1
+        fi
+}
+
+# U-Boot.
+uboot(){
+	cd $temp
+	git clone --progress --verbose https://github.com/u-boot/u-boot 2>&1\
+	| zenity --width=500 --height=100 --progress --title="Downloading File."
+	cd u-boot/
+
+	# gerei package_list certo
+	pkglist=`git tag | grep v2`
+	choices=`zenity --title="Graphical Tool for CROSS Compile"\
+        	--width=$width --height=$height\
+                --text="Choose item:" --list --column="Selected" --column="U-Boot Tag Version"\
+                --radiolist $pkglist`
+	git checkout $choices -b tmp
+
+
+	#
+	# script para buscar os paths da beaglebone no u-boot sistemas.
+	#
+	# Testar sem o Patch Download Patches.
+  	# wget -c https://rcn-ee.com/repos/git/u-boot-patches/v2018.03/0001-am335x_evm-uEnv.txt-bootz-n-fixes.patch
+  	# wget -c https://rcn-ee.com/repos/git/u-boot-patches/v2018.03/0002-U-Boot-BeagleBone-Cape-Manager.patch
+	# Apply Patches.
+  	# patch -p1 < 0001-am335x_evm-uEnv.txt-bootz-n-fixes.patch
+  	# patch -p1 < 0002-U-Boot-BeagleBone-Cape-Manager.patch
+
+	# Compile U-Boot.
+  	# make ARCH=arm CROSS_COMPILE=${CC} distclean
+  	# make ARCH=arm CROSS_COMPILE=${CC} am335x_evm_defconfig
+  	# make ARCH=arm CROSS_COMPILE=${CC}
+}
+
+# linux kernel.
+kernel(){
+  git clone https://github.com/RobertCNelson/bb-kernel
+  cd bb-kernel/
+
+  #
+  # List Versions: Linux Kernel.
+  #
+  # For am33x-v4.4 (Longterm 4.4.x): git checkout origin/am33x-v4.4 -b tmp
+  # For am33x-rt-v4.4 (Longterm 4.4.x + Real-Time Linux): git checkout origin/am33x-rt-v4.4 -b tmp
+  # For am33x-v4.9 (Longterm 4.9.x): git checkout origin/am33x-v4.9 -b tmp
+  # For am33x-rt-v4.9 (Longterm 4.9.x + Real-Time Linux): git checkout origin/am33x-rt-v4.9 -b tmp
+  # For am33x-v4.14 (Longterm 4.14.x): git checkout origin/am33x-v4.14 -b tmp
+  # For am33x-rt-v4.14 (Longterm 4.14.x + Real-Time Linux): git checkout origin/am33x-rt-v4.14 -b tmp
+
+  # For am33x-v4.15 (Stable):
+  git checkout origin/am33x-v4.15 -b tmp
+
+  # For am33x-v4.16 (Prepatch): git checkout origin/am33x-v4.16 -b tmp
+  #
+
+  #
+  # Texas Instrument Version Linux Kernel
+  #
+  # Download:
+  # git clone https://github.com/RobertCNelson/ti-linux-kernel-dev.git
+  # cd ti-linux-kernel-dev/
+  #
+  # For TI v4.4.x: git checkout origin/ti-linux-4.4.y -b tmp
+  # For TI v4.4.x: Real-Time git checkout origin/ti-linux-rt-4.4.y -b tmp
+  # For TI v4.9.x: git checkout origin/ti-linux-4.9.y -b tmp
+  # For TI v4.9.x: Real-Time git checkout origin/ti-linux-rt-4.9.y -b tmp
+  # For TI v4.14.x: git checkout origin/ti-linux-4.14.y -b tmp
+  # For TI v4.14.x: Real-Time git checkout origin/ti-linux-rt-4.14.y -b tmp
+  #
+
+  ./build_kernel.sh
+}
+
+# file system linux distros.
+debian_fs(){
+  wget -c https://rcn-ee.com/rootfs/eewiki/minfs/debian-9.3-minimal-armhf-2017-12-09.tar.xz
+  #tar xf debian-9.3-minimal-armhf-2017-12-09.tar.xz
+}
+
+# main.
+while true; do
+	main=`/usr/bin/zenity --title="Build ARM Image for Beaglebone Black."\
+		--width=$width --height=$height --list --column="Configure Packages:"\
+		"ARM Cross Compiler: GCC" "Bootloader: U-Boot"\
+      		"Linux Kernel" "Root File System"\
+      		"Setup microSD card" "Install Kernel and Root File System" 2>/dev/null`
+
+	case "${main}" in
+		"ARM Cross Compiler: GCC") cross_compiler ;;
+		"Bootloader: U-Boot") uboot ;;
+                "Linux Kernel") linux_build ;;
+		"Root File System") fs_build ;;
+                "Setup microSD card") sdcard_build ;;
+                "Install Kernel and Root File System") hack_build ;;
+        	*)
+		exit 1
+	esac
+done
