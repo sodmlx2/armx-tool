@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# demo1 | Version: test_05-10-2019
+# demo1 | Version: jan_02_2019-go
 
-# apagar o projeto antigo ou salvar ?* I/O
 #if [ -d .build/" ]; then rm -rf .build/ && mkdir .build; else mkdir .build; fi
 
 width=$(xwininfo -root | awk '$1=="Width:" {print $2}')
@@ -12,9 +11,10 @@ height=$(xwininfo -root | awk '$1=="Height:" {print $2}')
 mirror_linaro="https://releases.linaro.org/components/toolchain/binaries/"
 
 # mirror: u-boot (universal bootloader).
-#u-boot="https://ftp.denx.de/pub/u-boot/"
+mirror_uboot="https://ftp.denx.de/pub/u-boot/"
 
 # local source build.
+mkdir .build
 temp=".build"
 
 # get all versions of linaro gcc compiler.
@@ -22,10 +22,7 @@ versions=$(curl -s "$mirror_linaro" | grep binaries)
 versions=$(echo "${versions//}" | sed -e "s/<a href=\"\/components\/toolchain\/binaries\///g" | sed 's/\/"//g' | sort)
 
 # GCC (arm-linux-gnueabihf).
-cross_compiler(){
-
-  pkglist=""
-
+cross_compiler(){ pkglist=""
   for pkg in $versions; do pkglist="$pkglist FALSE $pkg"; done
 
 	choices=`zenity --title="Graphical Tool for CROSS Compile"\
@@ -41,22 +38,18 @@ cross_compiler(){
 			package=$(echo $package | sed -e "s/<a href=\"\/components\/toolchain\/binaries\/"$choice"\/arm-linux-gnueabihf//g")
 			package=${package%?};
 			package=$(echo ${package// /} | cut -c 2-)
-
 			cd $temp
-
-			wget $mirror_linaro$choice/arm-linux-gnueabihf/$package
+			wget $mirror_linaro$choice/arm-linux-gnueabihf/$package -q --show-progress
 			tar -xvf $package
                         dir=$(ls -d */)
                         bin="bin/arm-linux-gnueabihf-"
                         pwd=$(pwd)
-                        echo "CC=$pwd/$dir$bin" >> ~/.bash_profile
+                        echo "CC=$pwd/$dir/$bin" >> ~/.bash_profile
 
-			exit 1
-			#tratamento shell.!
-			#source ~/.bash_profile
-
-			#zenity --title=Config Manual" --width=500 --height=100\
-			#       --warning --text update this file: ~/.bash_profile and test GCC ARM support: ${CC}gcc --version"
+			# update: source ~/.bash_profile
+			zenity --title="Config Manual" --width=500 --height=100\
+				--warning --text "update this file: ~/.bash_profile and test GCC ARM support: ${CC}gcc --version"
+				sleep 2
 		done
 	        IFS=""
 
@@ -67,10 +60,10 @@ cross_compiler(){
 
 # U-Boot.
 uboot(){
-	cd $temp
-	git clone --progress --verbose https://github.com/u-boot/u-boot 2>&1\
-	| zenity --width=500 --height=100 --progress --title="Downloading File."
-	cd u-boot/
+	#cd $temp
+	######git clone --progress --verbose https://github.com/u-boot/u-boot 2>&1\
+	#| zenity --width=500 --height=100 --progress --title="Downloading File."
+	#cd u-boot/
 
 	# gerei package_list certo
 	pkglist=`git tag | grep v2`
@@ -81,10 +74,6 @@ uboot(){
 	git checkout $choices -b tmp
 
 
-	#
-	# script para buscar os paths da beaglebone no u-boot sistemas.
-	#
-	# Testar sem o Patch Download Patches.
   	# wget -c https://rcn-ee.com/repos/git/u-boot-patches/v2018.03/0001-am335x_evm-uEnv.txt-bootz-n-fixes.patch
   	# wget -c https://rcn-ee.com/repos/git/u-boot-patches/v2018.03/0002-U-Boot-BeagleBone-Cape-Manager.patch
 	# Apply Patches.
@@ -139,7 +128,7 @@ kernel(){
 # file system linux distros.
 debian_fs(){
   wget -c https://rcn-ee.com/rootfs/eewiki/minfs/debian-9.3-minimal-armhf-2017-12-09.tar.xz
-  #tar xf debian-9.3-minimal-armhf-2017-12-09.tar.xz
+  tar xf debian-9.3-minimal-armhf-2017-12-09.tar.xz
 }
 
 # main.
