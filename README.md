@@ -1,4 +1,3 @@
-# bone-build
-============
+# beaglebone-tool
 
-Link: https://www.digikey.com/eewiki/display/linuxonarm/BeagleBone+Black
+-- xbuild
