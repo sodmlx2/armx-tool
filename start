@@ -1,8 +1,19 @@
 #!/bin/bash
 
-# demo1 | Version: jan_02_2019-go
+# demo1 | Version: jan_11_2019-gyn
 
-#if [ -d .build/" ]; then rm -rf .build/ && mkdir .build; else mkdir .build; fi
+read -p "Project Name: " ID
+
+if [ -d .*_${ID} ]; then
+	tar -cf 2020-$ID-$(date +%d-%m)-bkp.tar.gz .*_$ID
+	mv 2020-*-bkp.tar.gz $HOME
+	# rm -rf .*_$ID
+	else
+    		mkdir .build_$ID
+fi
+
+# project build.
+DIR_BUILD=.build_${ID}
 
 width=$(xwininfo -root | awk '$1=="Width:" {print $2}')
 height=$(xwininfo -root | awk '$1=="Height:" {print $2}')
@@ -11,11 +22,7 @@ height=$(xwininfo -root | awk '$1=="Height:" {print $2}')
 mirror_linaro="https://releases.linaro.org/components/toolchain/binaries/"
 
 # mirror: u-boot (universal bootloader).
-mirror_uboot="https://ftp.denx.de/pub/u-boot/"
-
-# local source build.
-mkdir .build
-temp=".build"
+# mirror_uboot="https://ftp.denx.de/pub/u-boot/"
 
 # get all versions of linaro gcc compiler.
 versions=$(curl -s "$mirror_linaro" | grep binaries)
@@ -38,7 +45,7 @@ cross_compiler(){ pkglist=""
 			package=$(echo $package | sed -e "s/<a href=\"\/components\/toolchain\/binaries\/"$choice"\/arm-linux-gnueabihf//g")
 			package=${package%?};
 			package=$(echo ${package// /} | cut -c 2-)
-			cd $temp
+			cd $DIR_BUILD
 			wget $mirror_linaro$choice/arm-linux-gnueabihf/$package -q --show-progress
 			tar -xvf $package
                         dir=$(ls -d */)
@@ -60,18 +67,22 @@ cross_compiler(){ pkglist=""
 
 # U-Boot.
 uboot(){
-	#cd $temp
-	######git clone --progress --verbose https://github.com/u-boot/u-boot 2>&1\
+	cd $temp
+	#teste=$(curl -s $mirror_uboot)
+	#v=$( curl -s https://ftp.denx.de/pub/u-boot/ | sed 's/.*href="\([^"]*\).*/\1/p' | grep u-boot)
+	# echo $v
+	exit 1
+	###### git clone --progress --verbose https://github.com/u-boot/u-boot 2>&1\
 	#| zenity --width=500 --height=100 --progress --title="Downloading File."
 	#cd u-boot/
 
 	# gerei package_list certo
-	pkglist=`git tag | grep v2`
-	choices=`zenity --title="Graphical Tool for CROSS Compile"\
-        	--width=$width --height=$height\
-                --text="Choose item:" --list --column="Selected" --column="U-Boot Tag Version"\
-                --radiolist $pkglist`
-	git checkout $choices -b tmp
+	#pkglist=`git tag | grep v2`
+	#choices=`zenity --title="Graphical Tool for CROSS Compile"\
+        #	--width=$width --height=$height\
+        #        --text="Choose item:" --list --column="Selected" --column="U-Boot Tag Version"\
+        #        --radiolist $pkglist`
+	#git checkout $choices -b tmp
 
 
   	# wget -c https://rcn-ee.com/repos/git/u-boot-patches/v2018.03/0001-am335x_evm-uEnv.txt-bootz-n-fixes.patch
@@ -86,49 +97,18 @@ uboot(){
   	# make ARCH=arm CROSS_COMPILE=${CC}
 }
 
-# linux kernel.
 kernel(){
   git clone https://github.com/RobertCNelson/bb-kernel
-  cd bb-kernel/
-
-  #
-  # List Versions: Linux Kernel.
-  #
-  # For am33x-v4.4 (Longterm 4.4.x): git checkout origin/am33x-v4.4 -b tmp
-  # For am33x-rt-v4.4 (Longterm 4.4.x + Real-Time Linux): git checkout origin/am33x-rt-v4.4 -b tmp
-  # For am33x-v4.9 (Longterm 4.9.x): git checkout origin/am33x-v4.9 -b tmp
-  # For am33x-rt-v4.9 (Longterm 4.9.x + Real-Time Linux): git checkout origin/am33x-rt-v4.9 -b tmp
-  # For am33x-v4.14 (Longterm 4.14.x): git checkout origin/am33x-v4.14 -b tmp
-  # For am33x-rt-v4.14 (Longterm 4.14.x + Real-Time Linux): git checkout origin/am33x-rt-v4.14 -b tmp
-
-  # For am33x-v4.15 (Stable):
-  git checkout origin/am33x-v4.15 -b tmp
-
-  # For am33x-v4.16 (Prepatch): git checkout origin/am33x-v4.16 -b tmp
-  #
-
-  #
-  # Texas Instrument Version Linux Kernel
-  #
-  # Download:
-  # git clone https://github.com/RobertCNelson/ti-linux-kernel-dev.git
-  # cd ti-linux-kernel-dev/
-  #
-  # For TI v4.4.x: git checkout origin/ti-linux-4.4.y -b tmp
-  # For TI v4.4.x: Real-Time git checkout origin/ti-linux-rt-4.4.y -b tmp
-  # For TI v4.9.x: git checkout origin/ti-linux-4.9.y -b tmp
-  # For TI v4.9.x: Real-Time git checkout origin/ti-linux-rt-4.9.y -b tmp
-  # For TI v4.14.x: git checkout origin/ti-linux-4.14.y -b tmp
-  # For TI v4.14.x: Real-Time git checkout origin/ti-linux-rt-4.14.y -b tmp
-  #
-
-  ./build_kernel.sh
+  # cd bb-kernel/
+  # git checkout origin/am33x-v4.15 -b tmp
+  # ./build_kernel.sh
 }
 
-# file system linux distros.
-debian_fs(){
-  wget -c https://rcn-ee.com/rootfs/eewiki/minfs/debian-9.3-minimal-armhf-2017-12-09.tar.xz
-  tar xf debian-9.3-minimal-armhf-2017-12-09.tar.xz
+# fa linux distros.
+fs_build(){
+  cd $DIR_BUILD
+  wget https://rcn-ee.com/rootfs/eewiki/minfs/debian-9.3-minimal-armhf-2017-12-09.tar.xz -q --show-progress
+  tar xf debian-9.3-minimal-armhf-2017-12-09.tar.xz -C .
 }
 
 # main.
@@ -142,7 +122,7 @@ while true; do
 	case "${main}" in
 		"ARM Cross Compiler: GCC") cross_compiler ;;
 		"Bootloader: U-Boot") uboot ;;
-                "Linux Kernel") linux_build ;;
+                "Linux Kernel") kernel ;;
 		"Root File System") fs_build ;;
                 "Setup microSD card") sdcard_build ;;
                 "Install Kernel and Root File System") hack_build ;;
