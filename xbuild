@@ -1,15 +1,21 @@
 #!/bin/bash
 
-# demo1 | Version: jan_11_2019-gyn
+clear
+
+# demo1 | Version: jan_19_2019-gyn
+
+echo -e "ARM Tool Beaglebone Black\n"
+echo -e 'Project: https://github.com/sodmlx/beaglebone-tool\n'
 
 read -p "Project Name: " ID
 
-if [ -d .*_${ID} ]; then
-	tar -cf 2020-$ID-$(date +%d-%m)-bkp.tar.gz .*_$ID
-	mv 2020-*-bkp.tar.gz $HOME
-	# rm -rf .*_$ID
-	else
-    		mkdir .build_$ID
+# check project name.
+if [ -d .*_${ID} ];
+then
+	cd .*_${ID}
+else
+	mkdir -p .build_$ID
+	cd .*_${ID}
 fi
 
 # project build.
@@ -19,17 +25,25 @@ width=$(xwininfo -root | awk '$1=="Width:" {print $2}')
 height=$(xwininfo -root | awk '$1=="Height:" {print $2}')
 
 # linaro toolchain gcc.
-mirror_linaro="https://releases.linaro.org/components/toolchain/binaries/"
+MIRROR_LINARO="https://releases.linaro.org/components/toolchain/binaries/"
 
 # mirror: u-boot (universal bootloader).
-# mirror_uboot="https://ftp.denx.de/pub/u-boot/"
+MIRROR_UBOOT="https://gitlab.denx.de/u-boot/u-boot"
+UBOOT_NAME="u-boot"
 
 # get all versions of linaro gcc compiler.
-versions=$(curl -s "$mirror_linaro" | grep binaries)
+versions=$(curl -s "$MIRROR_LINARO" | grep binaries)
 versions=$(echo "${versions//}" | sed -e "s/<a href=\"\/components\/toolchain\/binaries\///g" | sed 's/\/"//g' | sort)
 
+# backup project folder.
+backup_project(){
+	tar -cf 2020-$ID-$(date +%d-%m)-bkp.tar.gz .*_$ID
+	mv 2020-*-bkp.tar.gz $HOME
+	rm -rf .*_$ID
+}
+
 # GCC (arm-linux-gnueabihf).
-cross_compiler(){ pkglist=""
+gcc_arm(){ pkglist=""
   for pkg in $versions; do pkglist="$pkglist FALSE $pkg"; done
 
 	choices=`zenity --title="Graphical Tool for CROSS Compile"\
@@ -41,17 +55,17 @@ cross_compiler(){ pkglist=""
                 IFS="|"
         	for choice in $choices
         	do
-			package=$(curl -s $mirror_linaro$choice/arm-linux-gnueabihf/ | grep -E '*x86.*_arm-linux-gnueabihf.tar.xz"')
+			package=$(curl -s $MIRROR_LINARO$choice/arm-linux-gnueabihf/ | grep -E '*x86.*_arm-linux-gnueabihf.tar.xz"')
 			package=$(echo $package | sed -e "s/<a href=\"\/components\/toolchain\/binaries\/"$choice"\/arm-linux-gnueabihf//g")
 			package=${package%?};
 			package=$(echo ${package// /} | cut -c 2-)
 			cd $DIR_BUILD
-			wget $mirror_linaro$choice/arm-linux-gnueabihf/$package -q --show-progress
+			wget $MIRROR_LINARO$choice/arm-linux-gnueabihf/$package -q --show-progress
 			tar -xvf $package
                         dir=$(ls -d */)
                         bin="bin/arm-linux-gnueabihf-"
                         pwd=$(pwd)
-                        echo "CC=$pwd/$dir/$bin" >> ~/.bash_profile
+                        echo "CC=$pwd/$dir$bin" >> ~/.bash_profile
 
 			# update: source ~/.bash_profile
 			zenity --title="Config Manual" --width=500 --height=100\
@@ -67,44 +81,33 @@ cross_compiler(){ pkglist=""
 
 # U-Boot.
 uboot(){
-	cd $temp
-	#teste=$(curl -s $mirror_uboot)
-	#v=$( curl -s https://ftp.denx.de/pub/u-boot/ | sed 's/.*href="\([^"]*\).*/\1/p' | grep u-boot)
-	# echo $v
-	exit 1
-	###### git clone --progress --verbose https://github.com/u-boot/u-boot 2>&1\
-	#| zenity --width=500 --height=100 --progress --title="Downloading File."
-	#cd u-boot/
+	if [ -d ${UBOOT_NAME} ]; then
+		echo -e "\nU-Boot Project Status [OK]\n"
+        else
+		echo -e "\nU-Boot Setup\n"
+		git clone --progress --verbose $MIRROR_UBOOT
+        	cd u-boot/
+        	tag_list=$(git tag | grep v2)
+        	echo $tag_list
+		choices=`zenity --title="Graphical Tool for CROSS Compile"\
+                	--width=$width --height=$height\
+                	--text="Choose item:" --list --column="Selected" --column="U-Boot Tag Version"\
+                	--radiolist $tag_list`
 
-	# gerei package_list certo
-	#pkglist=`git tag | grep v2`
-	#choices=`zenity --title="Graphical Tool for CROSS Compile"\
-        #	--width=$width --height=$height\
-        #        --text="Choose item:" --list --column="Selected" --column="U-Boot Tag Version"\
-        #        --radiolist $pkglist`
-	#git checkout $choices -b tmp
-
-
-  	# wget -c https://rcn-ee.com/repos/git/u-boot-patches/v2018.03/0001-am335x_evm-uEnv.txt-bootz-n-fixes.patch
-  	# wget -c https://rcn-ee.com/repos/git/u-boot-patches/v2018.03/0002-U-Boot-BeagleBone-Cape-Manager.patch
-	# Apply Patches.
-  	# patch -p1 < 0001-am335x_evm-uEnv.txt-bootz-n-fixes.patch
-  	# patch -p1 < 0002-U-Boot-BeagleBone-Cape-Manager.patch
-
-	# Compile U-Boot.
-  	# make ARCH=arm CROSS_COMPILE=${CC} distclean
-  	# make ARCH=arm CROSS_COMPILE=${CC} am335x_evm_defconfig
-  	# make ARCH=arm CROSS_COMPILE=${CC}
+		git checkout $choices -b tmp
+        	tag=$(git branch -v)
+	fi
 }
 
 kernel(){
+  cd $DIR_BUILD
   git clone https://github.com/RobertCNelson/bb-kernel
   # cd bb-kernel/
   # git checkout origin/am33x-v4.15 -b tmp
   # ./build_kernel.sh
 }
 
-# fa linux distros.
+# file system support.
 fs_build(){
   cd $DIR_BUILD
   wget https://rcn-ee.com/rootfs/eewiki/minfs/debian-9.3-minimal-armhf-2017-12-09.tar.xz -q --show-progress
@@ -120,7 +123,7 @@ while true; do
       		"Setup microSD card" "Install Kernel and Root File System" 2>/dev/null`
 
 	case "${main}" in
-		"ARM Cross Compiler: GCC") cross_compiler ;;
+		"ARM Cross Compiler: GCC") gcc_arm;;
 		"Bootloader: U-Boot") uboot ;;
                 "Linux Kernel") kernel ;;
 		"Root File System") fs_build ;;
