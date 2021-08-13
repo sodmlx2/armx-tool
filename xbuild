@@ -2,154 +2,168 @@
 
 clear
 
-# demo1 | Version: fev_15_2020-gyn
-
-echo -e "ARM Tool Beaglebone Black\n"
-echo -e 'Project: https://github.com/sodmlx/beaglebone-tool\n'
-
+# ARM Tool Beaglebone Black.
 read -p "Project Name: " ID
 
-# update project folder.
-update_project(){
-        cd .*_${ID}
-}
-
-# backup project folder.
+# backup project into home folder.
 backup_project(){
-        tar -cf 2020-$ID-$(date +%d-%m)-bkp.tar.gz .*_$ID
-        mv 2020-*-bkp.tar.gz $HOME
-        rm -rf .*_$ID
+  tar -cf $ID-$(date +%d-%m)-bkp.tar.gz .build_$ID
+  mv *-bkp.tar.gz $HOME
 }
 
 # check project name.
 if [ -d .*_${ID} ]; then
-	update_project
+  cd .*_${ID}
 else
-	mkdir -p .build_$ID && cd .*_${ID}
+  mkdir -p .build_$ID && cd .*_${ID}
 fi
 
 # Project source.
 DIR_BUILD=.build_${ID}
 
-# Set the dialog width
-WIDTH=$(xwininfo -root | awk '$1=="Width:" {print $2}')
+# Fullscreen support execute: xwininfo -stats -root.
+WIDTH="1920"; HEIGHT="1080";
 
-# Set the dialog height
-HEIGHT=$(xwininfo -root | awk '$1=="Height:" {print $2}')
-
+#
 # Linaro Toolchain GCC.
+# Default: gnuehbei.
+#
 MIRROR_LINARO="https://releases.linaro.org/components/toolchain/binaries/"
+HARD_FLOAT="/arm-linux-gnueabihf/"
+HARD_FLOAT_ARCH='*x86.*_arm-linux-gnueabihf.tar.xz"'
 
-# Universal Bootloader.
+#
+# Bootloader.
+# Default: U-Boot.
+#
 MIRROR_UBOOT="https://gitlab.denx.de/u-boot/u-boot"
-UBOOT_NAME="u-boot"
 
-# Debian Root File System.
+#
+# Root File System.
+# Default: Debian.
+#
 MIRROR_DEB_FS="https://rcn-ee.com/rootfs/eewiki/minfs/"
 
+#
 # Linux Kernel.
-MIRROR_KERNEL=""
+# Default: TI Kernel.
+#
+MIRROR_KERNEL="https://github.com/RobertCNelson/bb-kernel"
 
-# GCC (arm-linux-gnueabihf).
-gcc_arm(){
-  versions=$(curl -s "$MIRROR_LINARO" | grep binaries)
-  versions=$(echo "${versions//}" | sed -e "s/<a href=\"\/components\/toolchain\/binaries\///g" | sed 's/\/"//g' | sort)
-
+#
+# Compiler.
+#
+compilador(){
   pkglist=""
-  for pkg in $versions; do pkglist="$pkglist FALSE $pkg"; done
+  versions=$(curl -s "$MIRROR_LINARO" | grep binaries | sed -e "s/<a href=\"\/components\/toolchain\/binaries\///g" | sed 's/\/"//g' | sort)
 
-	choices=`zenity --title="Graphical Tool for CROSS Compile"\
-		--width=$WIDTH --height=$HEIGHT --text="Choose item:"\
-                --list --column="Selected" --column="Linaro Toolchain Package"\
-                --radiolist $pkglist --ok-label="Build Source" --cancel-label="Back" 2>/dev/null`
+  for pkg in $versions;
+    do pkglist="$pkglist FALSE $pkg";
+  done
 
-	if [ $? -eq 0 ]; then
-                IFS="|"
-        	for choice in $choices
-        	do
-			package=$(curl -s $MIRROR_LINARO$choice/arm-linux-gnueabihf/ | grep -E '*x86.*_arm-linux-gnueabihf.tar.xz"')
-			package=$(echo $package | sed -e "s/<a href=\"\/components\/toolchain\/binaries\/"$choice"\/arm-linux-gnueabihf//g")
-			package=${package%?};
-			package=$(echo ${package// /} | cut -c 2-)
-			cd $DIR_BUILD 2> /dev/null
-			wget $MIRROR_LINARO$choice/arm-linux-gnueabihf/$package -q --show-progress
-			tar -xvf $package
-                        rm -f $package
-			exit 1
-			dir=$(ls -d */)
-                        bin="bin/arm-linux-gnueabihf-"
-                        pwd=$(pwd)
-                        echo "CC=$pwd/$dir$bin" >> ~/.bash_profile
+  compiladores=`zenity --title="GCC Compiler Version"\
+		       --width=$WIDTH\
+                       --height=$HEIGHT\
+                       --text="Choose item:"\
+                       --list\
+                       --column="Selected"\
+		       --column="Linaro Toolchain Package"\
+                       --radiolist $pkglist\
+                       --ok-label="Build Source"\
+                       --cancel-label="Back"`
 
-			# update: source ~/.bash_profile
-			zenity --title="Config Manual" --width=500 --height=100\
-				--warning --text "update this file: ~/.bash_profile and test GCC ARM support: ${CC}gcc --version"
-				sleep 2
-		done
-	        IFS=""
+  # check bash special variable!
+  if [ $? -eq 0 ]; then
+    for VERSION in $compiladores; do
+        GCC=$(curl -s "$MIRROR_LINARO$VERSION$HARD_FLOAT" | grep -E "$HARD_FLOAT_ARCH")
+	GCC=$(echo $GCC | sed -e "s/<a href=\"\/components\/toolchain\/binaries\/"$VERSION"\/arm-linux-gnueabihf//g")
+	GCC=${GCC:1:-1};
 
-        	else
-            		sleep 1
-        fi
+	# download/extract compiler.
+        curl $MIRROR_LINARO$VERSION$HARD_FLOAT$GCC -L -O
+	tar -xvf $GCC
+
+        # update bash profile(GCC) & test ${CC}gcc --version
+        echo "CC=$PWD/gcc-linaro-$VERSION-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-" >> ~/.bash_profile
+    done
+    else
+      echo "Invalid Version!"
+  fi
 }
 
-# U-Boot.
-uboot(){
-	if [ -d ${UBOOT_NAME} ]; then
-		echo -e "\nU-Boot Project Status [OK]\n"
-        else
-		echo -e "\nU-Boot Setup\n"
-		git clone --progress --verbose $MIRROR_UBOOT
-        	cd u-boot/
-        	tag_list=$(git tag | grep v2)
-        	echo $tag_list
-		choices=`zenity --title="Graphical Tool for CROSS Compile"\
-                	--width=$WIDTH --height=$HEIGHT\
-                	--text="Choose item:" --list --column="Selected" --column="U-Boot Tag Version"\
-                	--radiolist $tag_list`
-			git checkout $choices -b tmp
-        		tag=$(git branch -v)
-	fi
+# Universal Bootloader (U-Boot)
+bootloader(){
+  git clone --progress --verbose $MIRROR_UBOOT
+  cd u-boot/ && tag_list=$(git tag | grep v2)
+
+  choices=`zenity --title="Graphical Tool for CROSS Compile"\
+                  --width=$WIDTH\
+		  --height=$HEIGHT\
+                  --text="Choose item:"\
+                  --list\
+                  --column="Selected"\
+                  --column="U-Boot Tag Version"\
+                  --radiolist $tag_list`
+
+  git checkout $choices -b tmp
+  tag=$(git branch -v)
 }
 
+#
 # Linux Kernel.
+# Versions: Texas Instruments & LK Basic Support Modify.
+#
 kernel(){
-  cd $DIR_BUILD
-  git clone https://github.com/RobertCNelson/bb-kernel
-  # cd bb-kernel/
+  # robert-nelson
+  # git clone https://github.com/sodmlx/linux-kernel
   # git checkout origin/am33x-v4.15 -b tmp
   # ./build_kernel.sh
+
+  git clone --depth 1 https://github.com/sodmlx/linux
+  git fetch --tags
 }
 
-# RootFS.
+#
+# Root File System.
+#
 file_system(){
-  cd $DIR_BUILD
-  DEB_FS_VERSIONS=$(curl -s $MIRROR_DEB_FS | sed -nr 's/(.*)href="?([^ ">]*).*/\2\n\1/; T; P; D;')
-  choices=`zenity --title="Graphical Tool for CROSS Compile"\
-                        --width=$WIDTH --height=$HEIGHT\
-                        --text="Choose item:" --list --column="Selected" --column="Root File System"\
-                        --radiolist $DEB_FS_VERSIONS`
 
+  DEB_FS_VERSIONS=$(curl -s $MIRROR_DEB_FS | sed -nr 's/(.*)href="?([^ ">]*).*/\2\n\1/; T; P; D;')
+
+  choices=`zenity --title="Graphical Tool for CROSS Compile"\
+                  --width=$WIDTH\
+                  --height=$HEIGHT\
+                  --text="Choose item:"\
+                  --list --column="Selected"\
+                  --column="Root File System"\
+                  --radiolist $DEB_FS_VERSIONS`
   # wget https://rcn-ee.com/rootfs/eewiki/minfs/debian-9.3-minimal-armhf-2017-12-09.tar.xz -q --show-progress
   # tar xf debian-9.3-minimal-armhf-2017-12-09.tar.xz -C .
 }
 
-# main.
-while true; do
-	main=`/usr/bin/zenity --title="Build ARM Image for Beaglebone Black."\
-		--width=$WIDTH --height=$HEIGHT --list --column="Configure Packages:"\
-		"ARM Cross Compiler: GCC" "Bootloader: U-Boot"\
-      		"Linux Kernel" "Root File System"\
-      		"Setup microSD card" "Install Kernel and Root File System" 2>/dev/null`
+# Beaglebone Black xbuild.
+while true;
+do
+  main=`zenity --title="Build ARM Image for Beaglebone Black."\
+               --width=$WIDTH\
+	       --height=$HEIGHT\
+               --list\
+	       --column="Configure Packages:"\
+                               "ARM Cross Compiler: GCC"\
+                               "Bootloader: U-Boot"\
+                               "Linux Kernel"\
+                               "Root File System"\
+  			       "Setup microSD card"\
+                               "Install Kernel and Root File System"`
 
-	case "${main}" in
-		"ARM Cross Compiler: GCC") gcc_arm;;
-		"Bootloader: U-Boot") uboot ;;
-                "Linux Kernel") kernel ;;
-		"Root File System") file_system ;;
-                "Setup microSD card") sdcard_build ;;
-                "Install Kernel and Root File System") hack_build ;;
-        	*)
-		exit 1
-	esac
+  case "${main}" in
+  "ARM Cross Compiler: GCC") compilador;;
+  "Bootloader: U-Boot") bootloader;;
+  "Linux Kernel") kernel;;
+  "Root File System") file_system;;
+  "Setup microSD card") sdcard_build;;
+  "Install Kernel and Root File System") build;;
+  *)
+  exit 1
+ esac
 done
