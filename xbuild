@@ -1,7 +1,5 @@
 #!/bin/bash
 
-clear
-
 # ARM Tool Beaglebone Black.
 read -p "Project Name: " ID
 
@@ -24,35 +22,21 @@ DIR_BUILD=.build_${ID}
 # Fullscreen support execute: xwininfo -stats -root.
 WIDTH="1920"; HEIGHT="1080";
 
-#
-# Linaro Toolchain GCC.
-# Default: gnuehbei.
-#
+# Linaro Toolchain GCC (gnueabihf).
 MIRROR_LINARO="https://releases.linaro.org/components/toolchain/binaries/"
 HARD_FLOAT="/arm-linux-gnueabihf/"
 HARD_FLOAT_ARCH='*x86.*_arm-linux-gnueabihf.tar.xz"'
 
-#
-# Bootloader.
-# Default: U-Boot.
-#
+# Bootloader U-Boot.
 MIRROR_UBOOT="https://gitlab.denx.de/u-boot/u-boot"
 
-#
-# Root File System.
-# Default: Debian.
-#
+# Root File System Debian.
 MIRROR_DEB_FS="https://rcn-ee.com/rootfs/eewiki/minfs/"
 
-#
-# Linux Kernel.
-# Default: TI Kernel.
-#
+# Beaglebone Kernel.
 MIRROR_KERNEL="https://github.com/RobertCNelson/bb-kernel"
 
-#
-# Compiler.
-#
+# compilador.
 compilador(){
   pkglist=""
   versions=$(curl -s "$MIRROR_LINARO" | grep binaries | sed -e "s/<a href=\"\/components\/toolchain\/binaries\///g" | sed 's/\/"//g' | sort)
@@ -81,10 +65,11 @@ compilador(){
 
 	# download/extract compiler.
         curl $MIRROR_LINARO$VERSION$HARD_FLOAT$GCC -L -O
-	tar -xvf $GCC
+	tar -xvf $GCC && BINARY=$(ls -d gcc*arm-linux-gnueabihf)
 
         # update bash profile(GCC) & test ${CC}gcc --version
-        echo "CC=$PWD/gcc-linaro-$VERSION-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-" >> ~/.bash_profile
+        echo "CC=$PWD/$BINARY/bin/arm-linux-gnueabihf-" >> ~/.bash_profile
+        . $HOME/.bash_profile && ${CC}gcc --version
     done
     else
       echo "Invalid Version!"
@@ -118,6 +103,9 @@ kernel(){
   # git clone https://github.com/sodmlx/linux-kernel
   # git checkout origin/am33x-v4.15 -b tmp
   # ./build_kernel.sh
+
+  # download linux kernel.
+  curl -O https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.13.10.tar.xz
 
   git clone --depth 1 https://github.com/sodmlx/linux
   git fetch --tags
