@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo -e "beaglebone-tool: xbuild version:cyrax\n"
+
 # ARM Tool Beaglebone Black.
 read -p "Project Name: " ID
 
@@ -19,33 +21,33 @@ fi
 # Project source.
 DIR_BUILD=.build_${ID}
 
-# Fullscreen support execute: xwininfo -stats -root.
+# Resolution support execute: xwininfo -stats -root.
 WIDTH="1920"; HEIGHT="1080";
 
 # Linaro Toolchain GCC (gnueabihf).
-MIRROR_LINARO="https://releases.linaro.org/components/toolchain/binaries/"
-HARD_FLOAT="/arm-linux-gnueabihf/"
-HARD_FLOAT_ARCH='*x86.*_arm-linux-gnueabihf.tar.xz"'
+MIRROR_LINARO="https://releases.linaro.org/components/toolchain/binaries/";
+HARD_FLOAT="/arm-linux-gnueabihf/";
+HARD_FLOAT_ARCH='*x86.*_arm-linux-gnueabihf.tar.xz"';
 
-# Bootloader U-Boot.
-MIRROR_UBOOT="https://gitlab.denx.de/u-boot/u-boot"
+# U-Boot.
+MIRROR_UBOOT="https://source.denx.de/u-boot/u-boot.git"
 
-# Root File System Debian.
-MIRROR_DEB_FS="https://rcn-ee.com/rootfs/eewiki/minfs/"
+# File System.
+MIRROR_FS="https://rcn-ee.com/rootfs/eewiki/minfs/"
 
-# Beaglebone Kernel.
-MIRROR_KERNEL="https://github.com/RobertCNelson/bb-kernel"
+# Kernel.
+MIRROR_KERNEL="https://github.com/torvalds/linux"
 
-# compilador.
+# Compilador!
 compilador(){
   pkglist=""
-  versions=$(curl -s "$MIRROR_LINARO" | grep binaries | sed -e "s/<a href=\"\/components\/toolchain\/binaries\///g" | sed 's/\/"//g' | sort)
+  versions=$(curl -s "$MIRROR_LINARO"|grep binaries|sed -e "s/<a href=\"\/components\/toolchain\/binaries\///g"|sed 's/\/"//g'|sort)
 
   for pkg in $versions;
     do pkglist="$pkglist FALSE $pkg";
   done
 
-  compiladores=`zenity --title="GCC Compiler Version"\
+  compiladores=`zenity --title="GCC Compiler List"\
 		       --width=$WIDTH\
                        --height=$HEIGHT\
                        --text="Choose item:"\
@@ -59,29 +61,35 @@ compilador(){
   # check bash special variable!
   if [ $? -eq 0 ]; then
     for VERSION in $compiladores; do
-        GCC=$(curl -s "$MIRROR_LINARO$VERSION$HARD_FLOAT" | grep -E "$HARD_FLOAT_ARCH")
-	GCC=$(echo $GCC | sed -e "s/<a href=\"\/components\/toolchain\/binaries\/"$VERSION"\/arm-linux-gnueabihf//g")
+
+        # scrapping shell.
+        GCC=$(curl -s "$MIRROR_LINARO$VERSION$HARD_FLOAT"|grep -E "$HARD_FLOAT_ARCH")
+	GCC=$(echo $GCC|sed -e "s/<a href=\"\/components\/toolchain\/binaries\/"$VERSION"\/arm-linux-gnueabihf//g")
 	GCC=${GCC:1:-1};
 
-	# download/extract compiler.
+	# download compiler.
+        echo -e "\n[GCC] Download GCC ARM Compiler -> "$VERSION"\n"
         curl $MIRROR_LINARO$VERSION$HARD_FLOAT$GCC -L -O
-	tar -xvf $GCC && BINARY=$(ls -d gcc*arm-linux-gnueabihf)
+
+	# extract compiler.
+        echo -e "\n[GCC] Extract GCC ARM Compiler -> "$GCC""
+        tar -xf $GCC && BINARY=$(ls -d gcc*arm-linux-gnueabihf)
 
         # update bash profile(GCC) & test ${CC}gcc --version
-        echo "CC=$PWD/$BINARY/bin/arm-linux-gnueabihf-" >> ~/.bash_profile
-        . $HOME/.bash_profile && ${CC}gcc --version
+        echo "CC=$PWD/$BINARY/bin/arm-linux-gnueabihf-" >> ~/.bash_profile && . ~/.bash_profile
+        ${CC}gcc --version|grep $VERSION
     done
     else
       echo "Invalid Version!"
   fi
 }
 
-# Universal Bootloader (U-Boot)
+# Universal Bootloader (U-Boot).
 bootloader(){
-  git clone --progress --verbose $MIRROR_UBOOT
-  cd u-boot/ && tag_list=$(git tag | grep v2)
-
-  choices=`zenity --title="Graphical Tool for CROSS Compile"\
+  git remote add master $MIRROR_UBOOT
+  git remote -v
+  tag_list=$(git ls-remote --tags $MIRROR_UBOOT|awk '{gsub("refs/tags/", "");print $2}'|grep "v.*[^}]$"|sort)
+  choices=`zenity --title="Universal Bootloader List"\
                   --width=$WIDTH\
 		  --height=$HEIGHT\
                   --text="Choose item:"\
@@ -89,47 +97,37 @@ bootloader(){
                   --column="Selected"\
                   --column="U-Boot Tag Version"\
                   --radiolist $tag_list`
-
-  git checkout $choices -b tmp
-  tag=$(git branch -v)
 }
 
-#
-# Linux Kernel.
-# Versions: Texas Instruments & LK Basic Support Modify.
-#
+# Linux Kernel with LLRP Module.
 kernel(){
-  # robert-nelson
-  # git clone https://github.com/sodmlx/linux-kernel
-  # git checkout origin/am33x-v4.15 -b tmp
-  # ./build_kernel.sh
-
-  # download linux kernel.
-  curl -O https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.13.10.tar.xz
-
-  git clone --depth 1 https://github.com/sodmlx/linux
-  git fetch --tags
+  git remote add master $MIRROR_KERNEL
+  git remote -v
+  tag_list=$(git ls-remote --tags $MIRROR_KERNEL|awk '{gsub("refs/tags/", "");print $2}'|grep "v.*[^}]$"|sort)
+  kernel_versions=${tag_list::-3}
+  choices=`zenity --title="Linux Kernel List"\
+                  --width=$WIDTH\
+                  --height=$HEIGHT\
+                  --text="Choose item:"\
+                  --list\
+                  --column="Selected"\
+                  --column="U-Boot Tag Version"\
+                  --radiolist $kernel_versions`
 }
 
-#
 # Root File System.
-#
 file_system(){
-
-  DEB_FS_VERSIONS=$(curl -s $MIRROR_DEB_FS | sed -nr 's/(.*)href="?([^ ">]*).*/\2\n\1/; T; P; D;')
-
-  choices=`zenity --title="Graphical Tool for CROSS Compile"\
+  FS_VERSIONS=$(curl -s $MIRROR_FS|sed -nr 's/(.*)href="?([^ ">]*).*/\2\n\1/; T; P; D;')
+  choices=`zenity --title="Root File System List"\
                   --width=$WIDTH\
                   --height=$HEIGHT\
                   --text="Choose item:"\
                   --list --column="Selected"\
                   --column="Root File System"\
-                  --radiolist $DEB_FS_VERSIONS`
-  # wget https://rcn-ee.com/rootfs/eewiki/minfs/debian-9.3-minimal-armhf-2017-12-09.tar.xz -q --show-progress
-  # tar xf debian-9.3-minimal-armhf-2017-12-09.tar.xz -C .
+                  --radiolist $FS_VERSIONS`
 }
 
-# Beaglebone Black xbuild.
+# Beaglebone Black Main xbuild.
 while true;
 do
   main=`zenity --title="Build ARM Image for Beaglebone Black."\
