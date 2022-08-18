@@ -30,6 +30,7 @@ WIDTH="1920"; HEIGHT="1080";
 MIRROR_LINARO="https://releases.linaro.org/components/toolchain/binaries/";
 HARD_FLOAT="/arm-linux-gnueabihf/";
 HARD_FLOAT_ARCH='*x86.*_arm-linux-gnueabihf.tar.xz"';
+GCC_BUILD_NAME="compiler-src"
 
 # U-Boot -> https://source.denx.de/u-boot/u-boot
 MIRROR_UBOOT="https://gitlab.com/u-boot/u-boot.git"
@@ -38,6 +39,7 @@ UBOOT_BRANCH="development-uboot"
 
 # File System -> https://rcn-ee.com/rootfs/eewiki/minfs/
 MIRROR_FS="https://dl-cdn.alpinelinux.org/alpine/v3.16/releases/armhf/"
+RTFS_BUILD_NAME="rtfs-src"
 
 # Kernel.
 MIRROR_KERNEL="https://github.com/torvalds/linux"
@@ -71,6 +73,7 @@ compiler(){
         GCC=$(curl -s "$MIRROR_LINARO$VERSION$HARD_FLOAT"|grep -E "$HARD_FLOAT_ARCH")
 	GCC=$(echo $GCC|sed -e "s/<a href=\"\/components\/toolchain\/binaries\/"$VERSION"\/arm-linux-gnueabihf//g")
 	GCC=${GCC:1:-1};
+	mkdir -p $GCC_BUILD_NAME
 
 	# download compiler.
         echo -e "\n[GCC] Download GCC ARM Compiler -> "$VERSION"\n"
@@ -78,10 +81,10 @@ compiler(){
 
 	# extract compiler.
         echo -e "\n[GCC] Extract GCC ARM Compiler -> "$GCC""
-        tar -xf $GCC && BINARY=$(ls -d gcc*arm-linux-gnueabihf)
+        tar -xf $GCC && rm -f $GCC && BINARY=$(ls -d gcc*arm-linux-gnueabihf) && mv $BINARY $GCC_BUILD_NAME
 
         # update bash profile(GCC) & test ${CC}gcc --version
-        echo "CC=$PWD/$BINARY/bin/arm-linux-gnueabihf-" >> ~/.bash_profile && . ~/.bash_profile
+        echo "CC=$PWD/$GCC_BUILD_NAME/$BINARY/bin/arm-linux-gnueabihf-" >> ~/.bash_profile && . ~/.bash_profile
         ${CC}gcc --version|grep $VERSION
     done
     else
@@ -157,6 +160,7 @@ kernel(){
 file_system(){
   pkglist=""
   RTFS_LIST=$(curl -s $MIRROR_FS|sed -nr 's/(.*)href="?([^ ">]*).*/\2\n\1/; T; P; D;')
+  mkdir -p $RTFS_BUILD_NAME
 
   for pkg in $RTFS_LIST; do
     pkglist="$pkglist FALSE $pkg";
@@ -172,8 +176,8 @@ file_system(){
 
   if [ $? -eq 0 ]; then
     for VERSION in $rtfs; do
-        curl $MIRROR_FS$VERSION -L -O
-        cd ../../
+        curl $MIRROR_FS$VERSION -L -O && rm -f $MIRROR_FS$VERSION
+        BINARY=$(ls -d alpine*-*) && mv $BINARY $RTFS_BUILD_NAME && cd ../../
     done
     else
       echo "RTFS Return Main Menu!"
