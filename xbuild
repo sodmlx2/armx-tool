@@ -1,9 +1,15 @@
 #!/bin/bash
 
-echo -e "beaglebone-tool: xbuild version:cyrax\n"
+clear
 
-# ARM Tool Beaglebone Black.
-read -p "Project Name: " ID
+echo -e "beaglebone-tool\nversion:cyrax-v0.1\n"
+
+# Project Settings.
+read -p "Project: " ID
+read -p "U-Boot Build: " UBOOT_BUILD_NAME
+read -p "U-Boot Branch: " UBOOT_BRANCH
+read -p "Kernel Build: " KERNEL_BUILD_NAME
+read -p "Kernel Branch: " KERNEL_BRANCH
 
 # backup project into home folder.
 backup_project(){
@@ -29,8 +35,8 @@ MIRROR_LINARO="https://releases.linaro.org/components/toolchain/binaries/";
 HARD_FLOAT="/arm-linux-gnueabihf/";
 HARD_FLOAT_ARCH='*x86.*_arm-linux-gnueabihf.tar.xz"';
 
-# U-Boot.
-MIRROR_UBOOT="https://source.denx.de/u-boot/u-boot.git"
+# U-Boot -> https://source.denx.de/u-boot/u-boot
+MIRROR_UBOOT="https://gitlab.com/u-boot/u-boot.git"
 
 # File System.
 MIRROR_FS="https://rcn-ee.com/rootfs/eewiki/minfs/"
@@ -38,13 +44,13 @@ MIRROR_FS="https://rcn-ee.com/rootfs/eewiki/minfs/"
 # Kernel.
 MIRROR_KERNEL="https://github.com/torvalds/linux"
 
-# Compilador!
+# Linaro ARM Compiler.
 compilador(){
   pkglist=""
   versions=$(curl -s "$MIRROR_LINARO"|grep binaries|sed -e "s/<a href=\"\/components\/toolchain\/binaries\///g"|sed 's/\/"//g'|sort)
 
-  for pkg in $versions;
-    do pkglist="$pkglist FALSE $pkg";
+  for pkg in $versions; do
+    pkglist="$pkglist FALSE $pkg";
   done
 
   compiladores=`zenity --title="GCC Compiler List"\
@@ -58,7 +64,6 @@ compilador(){
                        --ok-label="Build Source"\
                        --cancel-label="Back"`
 
-  # check bash special variable!
   if [ $? -eq 0 ]; then
     for VERSION in $compiladores; do
 
@@ -80,39 +85,73 @@ compilador(){
         ${CC}gcc --version|grep $VERSION
     done
     else
-      echo "Invalid Version!"
+      echo "GCC Return Main Menu!"
   fi
 }
 
 # Universal Bootloader (U-Boot).
 bootloader(){
-  git remote add master $MIRROR_UBOOT
-  git remote -v
-  tag_list=$(git ls-remote --tags $MIRROR_UBOOT|awk '{gsub("refs/tags/", "");print $2}'|grep "v.*[^}]$"|sort)
-  choices=`zenity --title="Universal Bootloader List"\
+  pkglist=""
+  git init $UBOOT_BUILD_NAME --quiet && cd $UBOOT_BUILD_NAME && git remote add master $MIRROR_UBOOT
+  UBOOT_LIST=$(git ls-remote --tags $MIRROR_UBOOT|awk '{gsub("refs/tags/","");print $2}'|grep "v.*[^}]$"|sort)
+
+  for pkg in $UBOOT_LIST; do
+    pkglist="$pkglist FALSE $pkg";
+  done
+
+  uboot=`zenity --title="Universal Bootloader List"\
                   --width=$WIDTH\
 		  --height=$HEIGHT\
                   --text="Choose item:"\
                   --list\
                   --column="Selected"\
                   --column="U-Boot Tag Version"\
-                  --radiolist $tag_list`
+                  --radiolist $pkglist\
+		  --ok-label="Build Source"\
+                  --cancel-label="Back"`
+
+  if [ $? -eq 0 ]; then
+    for VERSION in $uboot; do
+	git clone -b $VERSION --depth 1 $MIRROR_UBOOT $UBOOT_BRANCH
+	cd $UBOOT_BRANCH && git checkout -b $UBOOT_BRANCH --quiet && git status
+        cd ../../
+    done
+    else
+      echo "U-Boot Return Main Menu!"
+  fi
 }
 
-# Linux Kernel with LLRP Module.
+
+# Linux Kernel.
 kernel(){
-  git remote add master $MIRROR_KERNEL
-  git remote -v
+  pkglist=""
+
+  git init $KERNEL_BUILD_NAME --quiet && cd $KERNEL_BUILD_NAME && git remote add master $MIRROR_KERNEL
   tag_list=$(git ls-remote --tags $MIRROR_KERNEL|awk '{gsub("refs/tags/", "");print $2}'|grep "v.*[^}]$"|sort)
-  kernel_versions=${tag_list::-3}
-  choices=`zenity --title="Linux Kernel List"\
+  KERNEL_LIST=${tag_list::-3}
+
+  for pkg in $KERNEL_LIST; do
+    pkglist="$pkglist FALSE $pkg";
+  done
+
+  kernel=`zenity --title="Linux Kernel List"\
                   --width=$WIDTH\
                   --height=$HEIGHT\
                   --text="Choose item:"\
                   --list\
                   --column="Selected"\
                   --column="U-Boot Tag Version"\
-                  --radiolist $kernel_versions`
+                  --radiolist $pkglist`
+
+  if [ $? -eq 0 ]; then
+    for VERSION in $kernel; do
+        git clone -b $VERSION --depth 1 $MIRROR_KERNEL $KERNEL_BRANCH
+        cd $KERNEL_BRANCH && git checkout -b $KERNEL_BRANCH --quiet && git status
+        cd ../../
+    done
+    else
+      echo "Kernel Return Main Menu!"
+  fi
 }
 
 # Root File System.
