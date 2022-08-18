@@ -1,15 +1,11 @@
 #!/bin/bash
 
 clear
-
-echo -e "beaglebone-tool\nversion:cyrax-v0.1\n"
+echo -e "beaglebone-tool\nversion:v0.1\n"
 
 # Project Settings.
+cat ./README.md && echo ""
 read -p "Project: " ID
-read -p "U-Boot Build: " UBOOT_BUILD_NAME
-read -p "U-Boot Branch: " UBOOT_BRANCH
-read -p "Kernel Build: " KERNEL_BUILD_NAME
-read -p "Kernel Branch: " KERNEL_BRANCH
 
 # backup project into home folder.
 backup_project(){
@@ -37,15 +33,19 @@ HARD_FLOAT_ARCH='*x86.*_arm-linux-gnueabihf.tar.xz"';
 
 # U-Boot -> https://source.denx.de/u-boot/u-boot
 MIRROR_UBOOT="https://gitlab.com/u-boot/u-boot.git"
+UBOOT_BUILD_NAME="uboot-src"
+UBOOT_BRANCH="development-uboot"
 
-# File System.
-MIRROR_FS="https://rcn-ee.com/rootfs/eewiki/minfs/"
+# File System -> https://rcn-ee.com/rootfs/eewiki/minfs/
+MIRROR_FS="https://dl-cdn.alpinelinux.org/alpine/v3.16/releases/armhf/"
 
 # Kernel.
 MIRROR_KERNEL="https://github.com/torvalds/linux"
+KERNEL_BUILD_NAME="kernel-src"
+KERNEL_BRANCH="development-kernel"
 
 # Linaro ARM Compiler.
-compilador(){
+compiler(){
   pkglist=""
   versions=$(curl -s "$MIRROR_LINARO"|grep binaries|sed -e "s/<a href=\"\/components\/toolchain\/binaries\///g"|sed 's/\/"//g'|sort)
 
@@ -53,7 +53,7 @@ compilador(){
     pkglist="$pkglist FALSE $pkg";
   done
 
-  compiladores=`zenity --title="GCC Compiler List"\
+  compiladores=`zenity --title="Linaro Toolchain GCC Compiler List"\
 		       --width=$WIDTH\
                        --height=$HEIGHT\
                        --text="Choose item:"\
@@ -125,7 +125,6 @@ bootloader(){
 # Linux Kernel.
 kernel(){
   pkglist=""
-
   git init $KERNEL_BUILD_NAME --quiet && cd $KERNEL_BUILD_NAME && git remote add master $MIRROR_KERNEL
   tag_list=$(git ls-remote --tags $MIRROR_KERNEL|awk '{gsub("refs/tags/", "");print $2}'|grep "v.*[^}]$"|sort)
   KERNEL_LIST=${tag_list::-3}
@@ -156,14 +155,37 @@ kernel(){
 
 # Root File System.
 file_system(){
-  FS_VERSIONS=$(curl -s $MIRROR_FS|sed -nr 's/(.*)href="?([^ ">]*).*/\2\n\1/; T; P; D;')
-  choices=`zenity --title="Root File System List"\
+  pkglist=""
+  RTFS_LIST=$(curl -s $MIRROR_FS|sed -nr 's/(.*)href="?([^ ">]*).*/\2\n\1/; T; P; D;')
+
+  for pkg in $RTFS_LIST; do
+    pkglist="$pkglist FALSE $pkg";
+  done
+
+  rtfs=`zenity --title="Root File System List"\
                   --width=$WIDTH\
                   --height=$HEIGHT\
                   --text="Choose item:"\
                   --list --column="Selected"\
                   --column="Root File System"\
-                  --radiolist $FS_VERSIONS`
+                  --radiolist $pkglist`
+
+  if [ $? -eq 0 ]; then
+    for VERSION in $rtfs; do
+        curl $MIRROR_FS$VERSION -L -O
+        cd ../../
+    done
+    else
+      echo "RTFS Return Main Menu!"
+  fi
+}
+
+build(){
+  echo "testing..."
+}
+
+kvm(){
+  echo "testing..."
 }
 
 # Beaglebone Black Main xbuild.
@@ -174,20 +196,20 @@ do
 	       --height=$HEIGHT\
                --list\
 	       --column="Configure Packages:"\
-                               "ARM Cross Compiler: GCC"\
-                               "Bootloader: U-Boot"\
-                               "Linux Kernel"\
-                               "Root File System"\
-  			       "Setup microSD card"\
-                               "Install Kernel and Root File System"`
+               		"ARM Cross Compiler: GCC"\
+                        "Bootloader: U-Boot"\
+                        "Linux Kernel"\
+                        "Root File System"\
+                        "Install Kernel and Root File System"\
+			"Virtual ARM with KVM/QEMU"`
 
   case "${main}" in
-  "ARM Cross Compiler: GCC") compilador;;
+  "ARM Cross Compiler: GCC") compiler;;
   "Bootloader: U-Boot") bootloader;;
   "Linux Kernel") kernel;;
   "Root File System") file_system;;
-  "Setup microSD card") sdcard_build;;
   "Install Kernel and Root File System") build;;
+  "Virtual ARM with KVM/QEMU") kvm;;
   *)
   exit 1
  esac
