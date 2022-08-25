@@ -1,7 +1,7 @@
 #!/bin/bash
 
 clear
-source ./config
+source ./xconfig
 echo -e "armx-tool\nversion:v0.1\n"
 
 # Project Settings.
