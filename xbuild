@@ -1,7 +1,8 @@
 #!/bin/bash
 
 clear
-echo -e "beaglebone-tool\nversion:v0.1\n"
+source ./config
+echo -e "armx-tool\nversion:v0.1\n"
 
 # Project Settings.
 cat ./README.md && echo ""
@@ -22,29 +23,6 @@ fi
 
 # Project source.
 DIR_BUILD=.build_${ID}
-
-# Resolution support execute: xwininfo -stats -root.
-WIDTH="1920"; HEIGHT="1080";
-
-# Linaro Toolchain GCC (gnueabihf).
-MIRROR_LINARO="https://releases.linaro.org/components/toolchain/binaries/";
-HARD_FLOAT="/arm-linux-gnueabihf/";
-HARD_FLOAT_ARCH='*x86.*_arm-linux-gnueabihf.tar.xz"';
-GCC_BUILD_NAME="compiler-src"
-
-# U-Boot -> https://source.denx.de/u-boot/u-boot
-MIRROR_UBOOT="https://gitlab.com/u-boot/u-boot.git"
-UBOOT_BUILD_NAME="uboot-src"
-UBOOT_BRANCH="development-uboot"
-
-# File System -> https://rcn-ee.com/rootfs/eewiki/minfs/
-MIRROR_FS="https://dl-cdn.alpinelinux.org/alpine/v3.16/releases/armhf/"
-RTFS_BUILD_NAME="rtfs-src"
-
-# Kernel.
-MIRROR_KERNEL="https://github.com/torvalds/linux"
-KERNEL_BUILD_NAME="kernel-src"
-KERNEL_BRANCH="development-kernel"
 
 # Linaro ARM Compiler.
 compiler(){
@@ -95,7 +73,8 @@ compiler(){
 # Universal Bootloader (U-Boot).
 bootloader(){
   pkglist=""
-  git init $UBOOT_BUILD_NAME --quiet && cd $UBOOT_BUILD_NAME && git remote add master $MIRROR_UBOOT
+  git init $UBOOT_BUILD_NAME --quiet && cd $UBOOT_BUILD_NAME
+  git remote add master $MIRROR_UBOOT
   UBOOT_LIST=$(git ls-remote --tags $MIRROR_UBOOT|awk '{gsub("refs/tags/","");print $2}'|grep "v.*[^}]$"|sort)
 
   for pkg in $UBOOT_LIST; do
@@ -115,9 +94,13 @@ bootloader(){
 
   if [ $? -eq 0 ]; then
     for VERSION in $uboot; do
-	git clone -b $VERSION --depth 1 $MIRROR_UBOOT $UBOOT_BRANCH
-	cd $UBOOT_BRANCH && git checkout -b $UBOOT_BRANCH --quiet && git status
-        cd ../../
+	echo -e "\n[U-BOOT] Download Bootloader -> "$VERSION"\n"
+	git clone -b $VERSION --depth 1 $MIRROR_UBOOT $VERSION && cd $VERSION
+        git checkout -b $VERSION --quiet && git status
+        make ARCH=arm CROSS_COMPILE=${CC} distclean
+        make ARCH=arm CROSS_COMPILE=${CC} qemu_arm_defconfig
+	make ARCH=arm CROSS_COMPILE=${CC}
+	cd ../../
     done
     else
       echo "U-Boot Return Main Menu!"
@@ -128,8 +111,9 @@ bootloader(){
 # Linux Kernel.
 kernel(){
   pkglist=""
-  git init $KERNEL_BUILD_NAME --quiet && cd $KERNEL_BUILD_NAME && git remote add master $MIRROR_KERNEL
-  tag_list=$(git ls-remote --tags $MIRROR_KERNEL|awk '{gsub("refs/tags/", "");print $2}'|grep "v.*[^}]$"|sort)
+  git init $KERNEL_BUILD_NAME --quiet && cd $KERNEL_BUILD_NAME
+  git remote add master $MIRROR_KERNEL
+  tag_list=$(git ls-remote --tags $MIRROR_KERNEL|awk '{gsub("refs/tags/","");print $2}'|grep ".*[^}]$"|sort)
   KERNEL_LIST=${tag_list::-3}
 
   for pkg in $KERNEL_LIST; do
@@ -147,8 +131,12 @@ kernel(){
 
   if [ $? -eq 0 ]; then
     for VERSION in $kernel; do
-        git clone -b $VERSION --depth 1 $MIRROR_KERNEL $KERNEL_BRANCH
-        cd $KERNEL_BRANCH && git checkout -b $KERNEL_BRANCH --quiet && git status
+	echo -e "\n[KERNEL] Download Linux Kernel -> "$VERSION"\n"
+	git clone -b $VERSION --depth 1 $MIRROR_KERNEL $VERSION && cd $VERSION
+	git checkout -b $VERSION --quiet && git status
+        make ARCH=arm CROSS_COMPILE=${CC} distclean
+        make ARCH=arm CROSS_COMPILE=${CC} defconfig
+        make ARCH=arm CROSS_COMPILE=${CC}
         cd ../../
     done
     else
@@ -176,6 +164,7 @@ file_system(){
 
   if [ $? -eq 0 ]; then
     for VERSION in $rtfs; do
+	echo -e "\n[RTFS] Download Root File System -> "$VERSION"\n"
         curl $MIRROR_FS$VERSION -L -O && rm -f $MIRROR_FS$VERSION
         BINARY=$(ls -d alpine*-*) && mv $BINARY $RTFS_BUILD_NAME && cd ../../
     done
