@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-=======
-
->>>>>>> 0918b81c91e21ee9a06ca2de50ec79feb5a5f3c9
 # Project 
 
 -- resources are components that are necessary for successful project implementation.
