@@ -1,6 +1,5 @@
 #!/bin/bash
 
-clear
 source ./xconfig
 echo -e "armx-tool\nversion:v0.1\n"
 
