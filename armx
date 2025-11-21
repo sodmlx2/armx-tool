@@ -1,11 +1,6 @@
 #!/bin/bash
 
-source ./xconfig
-echo -e "armx-tool\nversion:v0.1\n"
-
-# Project Settings.
-cat ./README.md && echo ""
-read -p "Project: " ID
+source ./.config
 
 # backup project into home folder.
 backup_project(){
@@ -20,10 +15,10 @@ else
   mkdir -p .build_$ID && cd .*_${ID}
 fi
 
-# Project source.
+# project sources.
 DIR_BUILD=.build_${ID}
 
-# Linaro ARM Compiler.
+# compilers.
 compiler(){
   pkglist=""
   versions=$(curl -s "$MIRROR_LINARO"|grep binaries|sed -e "s/<a href=\"\/components\/toolchain\/binaries\///g"|sed 's/\/"//g'|sort)
@@ -32,7 +27,7 @@ compiler(){
     pkglist="$pkglist FALSE $pkg";
   done
 
-  compiladores=`zenity --title="Linaro Toolchain GCC Compiler List"\
+  compiladores=`zenity --title="Compiler"\
 		       --width=$WIDTH\
                        --height=$HEIGHT\
                        --text="Choose item:"\
@@ -61,15 +56,22 @@ compiler(){
         tar -xf $GCC && rm -f $GCC && BINARY=$(ls -d gcc*arm-linux-gnueabihf) && mv $BINARY $GCC_BUILD_NAME
 
         # update bash profile(GCC) & test ${CC}gcc --version
-        echo "CC=$PWD/$GCC_BUILD_NAME/$BINARY/bin/arm-linux-gnueabihf-" >> ~/.bash_profile && . ~/.bash_profile
-        ${CC}gcc --version|grep $VERSION
+	  # build prefix path
+        PREFIX="$PWD/$GCC_BUILD_NAME/$BINARY/bin/arm-linux-gnueabihf-"
+
+        # update bash profile
+        update_bash_profile_gcc "$PREFIX"
+        source ~/.bash_profile
+
+        # test gcc
+        ${CC}gcc --version | grep "$VERSION"
     done
     else
       echo "GCC Return Main Menu!"
   fi
 }
 
-# Universal Bootloader (U-Boot).
+# bootloaders.
 bootloader(){
   pkglist=""
   git init $UBOOT_BUILD_NAME --quiet && cd $UBOOT_BUILD_NAME
@@ -106,8 +108,7 @@ bootloader(){
   fi
 }
 
-
-# Linux Kernel.
+# linux kernel.
 kernel(){
   pkglist=""
   git init $KERNEL_BUILD_NAME --quiet && cd $KERNEL_BUILD_NAME
@@ -143,7 +144,7 @@ kernel(){
   fi
 }
 
-# Root File System.
+# rtfs.
 file_system(){
   pkglist=""
   RTFS_LIST=$(curl -s $MIRROR_FS|sed -nr 's/(.*)href="?([^ ">]*).*/\2\n\1/; T; P; D;')
@@ -180,10 +181,24 @@ kvm(){
   echo "testing..."
 }
 
+# update user profile.
+update_bash_profile_gcc() {
+    local profile="$HOME/.bash_profile"
+    local new_prefix="$1"
+
+    [ -z "$new_prefix" ] && { echo "[ERRO] Prefixo vazio no update_bash_profile_gcc"; return 1; }
+
+    echo -e "\n[INFO] Limpando entradas antigas do GCC ARM no $profile"
+    sed -i 's|^\(CC=.*arm-linux-gnueabihf-.*\)|#\1|g' "$profile"
+    echo "export CC=\"$new_prefix\"" >> "$profile"
+    echo 'export PATH="$(dirname $CC):$PATH"' >> "$profile"
+    echo "[INFO] Novo GCC definido com sucesso."
+}
+
 # Beaglebone Black Main xbuild.
 while true;
 do
-  main=`zenity --title="Build ARM Image for Beaglebone Black."\
+  main=`zenity --title="ARMX."\
                --width=$WIDTH\
 	       --height=$HEIGHT\
                --list\
@@ -196,7 +211,7 @@ do
 			"Virtual ARM with KVM/QEMU"`
 
   case "${main}" in
-  "ARM Cross Compiler: GCC") compiler;;
+  "ARM Cross Compiler: GCC") compiler 2>/dev/null;;
   "Bootloader: U-Boot") bootloader;;
   "Linux Kernel") kernel;;
   "Root File System") file_system;;
