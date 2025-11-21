@@ -3,7 +3,7 @@
 source ./.config
 
 # backup project into home folder.
-backup_project(){
+backup_project() {
   tar -cf $ID-$(date +%d-%m)-bkp.tar.gz .build_$ID
   mv *-bkp.tar.gz $HOME
 }
@@ -19,21 +19,22 @@ fi
 DIR_BUILD=.build_${ID}
 
 # compilers.
-compiler(){
+compiler() {
   pkglist=""
   versions=$(curl -s "$MIRROR_LINARO"|grep binaries|sed -e "s/<a href=\"\/components\/toolchain\/binaries\///g"|sed 's/\/"//g'|sort)
 
-  for pkg in $versions; do
+  for pkg in $versions;
+  do
     pkglist="$pkglist FALSE $pkg";
   done
 
   compiladores=`zenity --title="Compiler"\
-		       --width=$WIDTH\
+                       --width=$WIDTH\
                        --height=$HEIGHT\
                        --text="Choose item:"\
                        --list\
                        --column="Selected"\
-		       --column="Linaro Toolchain Package"\
+  		                 --column="Linaro Toolchain Package"\
                        --radiolist $pkglist\
                        --ok-label="Build Source"\
                        --cancel-label="Back"`
@@ -43,36 +44,33 @@ compiler(){
 
         # scrapping shell.
         GCC=$(curl -s "$MIRROR_LINARO$VERSION$HARD_FLOAT"|grep -E "$HARD_FLOAT_ARCH")
-	GCC=$(echo $GCC|sed -e "s/<a href=\"\/components\/toolchain\/binaries\/"$VERSION"\/arm-linux-gnueabihf//g")
-	GCC=${GCC:1:-1};
-	mkdir -p $GCC_BUILD_NAME
+        GCC=$(echo $GCC|sed -e "s/<a href=\"\/components\/toolchain\/binaries\/"$VERSION"\/arm-linux-gnueabihf//g")
+        GCC=${GCC:1:-1};
+        mkdir -p $GCC_BUILD_NAME
 
-	# download compiler.
+        # download compiler.
         echo -e "\n[GCC] Download GCC ARM Compiler -> "$VERSION"\n"
         curl $MIRROR_LINARO$VERSION$HARD_FLOAT$GCC -L -O
 
-	# extract compiler.
+        # extract compiler.
         echo -e "\n[GCC] Extract GCC ARM Compiler -> "$GCC""
         tar -xf $GCC && rm -f $GCC && BINARY=$(ls -d gcc*arm-linux-gnueabihf) && mv $BINARY $GCC_BUILD_NAME
 
-        # update bash profile(GCC) & test ${CC}gcc --version
-	  # build prefix path
+        # update bash profile.
         PREFIX="$PWD/$GCC_BUILD_NAME/$BINARY/bin/arm-linux-gnueabihf-"
-
-        # update bash profile
         update_bash_profile_gcc "$PREFIX"
         source ~/.bash_profile
 
-        # test gcc
+        # test gcc compiler.
         ${CC}gcc --version | grep "$VERSION"
     done
     else
-      echo "GCC Return Main Menu!"
+      echo "[ARMX] GCC Return Main Menu!"
   fi
 }
 
 # bootloaders.
-bootloader(){
+bootloader() {
   pkglist=""
   git init $UBOOT_BUILD_NAME --quiet && cd $UBOOT_BUILD_NAME
   git remote add master $MIRROR_UBOOT
@@ -109,7 +107,7 @@ bootloader(){
 }
 
 # linux kernel.
-kernel(){
+kernel() {
   pkglist=""
   git init $KERNEL_BUILD_NAME --quiet && cd $KERNEL_BUILD_NAME
   git remote add master $MIRROR_KERNEL
@@ -145,7 +143,7 @@ kernel(){
 }
 
 # rtfs.
-file_system(){
+file_system() {
   pkglist=""
   RTFS_LIST=$(curl -s $MIRROR_FS|sed -nr 's/(.*)href="?([^ ">]*).*/\2\n\1/; T; P; D;')
   mkdir -p $RTFS_BUILD_NAME
@@ -195,28 +193,28 @@ update_bash_profile_gcc() {
     echo "[INFO] Novo GCC definido com sucesso."
 }
 
-# Beaglebone Black Main xbuild.
+# armx main menu.
 while true;
 do
   main=`zenity --title="ARMX."\
                --width=$WIDTH\
-	       --height=$HEIGHT\
+	             --height=$HEIGHT\
                --list\
-	       --column="Configure Packages:"\
-               		"ARM Cross Compiler: GCC"\
+	             --column="Configure Packages:"\
+                        "ARM Cross Compiler: GCC"\
                         "Bootloader: U-Boot"\
                         "Linux Kernel"\
                         "Root File System"\
                         "Install Kernel and Root File System"\
-			"Virtual ARM with KVM/QEMU"`
+			                   "Virtual ARM with KVM/QEMU"`
 
   case "${main}" in
-  "ARM Cross Compiler: GCC") compiler 2>/dev/null;;
-  "Bootloader: U-Boot") bootloader;;
-  "Linux Kernel") kernel;;
-  "Root File System") file_system;;
-  "Install Kernel and Root File System") build;;
-  "Virtual ARM with KVM/QEMU") kvm;;
+    "ARM Cross Compiler: GCC") compiler 2>/dev/null;;
+    "Bootloader: U-Boot") bootloader;;
+    "Linux Kernel") kernel;;
+    "Root File System") file_system;;
+    "Install Kernel and Root File System") build;;
+    "Virtual ARM with KVM/QEMU") kvm;;
   *)
   exit 1
  esac
