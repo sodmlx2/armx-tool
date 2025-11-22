@@ -10,6 +10,3 @@
 
 -- DEPENDECIES:
 * linux packages: zenity, curl, sed, awk and bash.
-
--- DISCLAIMER:
-* ...>:)..

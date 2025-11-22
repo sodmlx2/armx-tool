@@ -81,25 +81,28 @@ bootloader() {
   done
 
   uboot=`zenity --title="Universal Bootloader List"\
-                  --width=$WIDTH\
-		  --height=$HEIGHT\
-                  --text="Choose item:"\
-                  --list\
-                  --column="Selected"\
-                  --column="U-Boot Tag Version"\
-                  --radiolist $pkglist\
-		  --ok-label="Build Source"\
-                  --cancel-label="Back"`
+                --width=$WIDTH\
+		            --height=$HEIGHT\
+                --text="Choose item:"\
+                --list\
+                --column="Selected"\
+                --column="U-Boot Tag Version"\
+                --radiolist $pkglist\
+		            --ok-label="Build Source"\
+                --cancel-label="Back"`
 
   if [ $? -eq 0 ]; then
     for VERSION in $uboot; do
-	echo -e "\n[U-BOOT] Download Bootloader -> "$VERSION"\n"
-	git clone -b $VERSION --depth 1 $MIRROR_UBOOT $VERSION && cd $VERSION
-        git checkout -b $VERSION --quiet && git status
-        make ARCH=arm CROSS_COMPILE=${CC} distclean
-        make ARCH=arm CROSS_COMPILE=${CC} qemu_arm_defconfig
-	make ARCH=arm CROSS_COMPILE=${CC}
-	cd ../../
+      echo -e "\n[U-BOOT] Download Bootloader -> "$VERSION"\n"
+        
+      git clone -b $VERSION --depth 1 $MIRROR_UBOOT $VERSION && cd $VERSION
+      # git checkout -b $VERSION --quiet && git status
+      git switch -c "build-$VERSION" --quiet && git status
+      git status
+      make ARCH=arm CROSS_COMPILE=${CC} distclean
+      make ARCH=arm CROSS_COMPILE=${CC} qemu_arm_defconfig
+      make ARCH=arm CROSS_COMPILE=${CC}
+      cd ../../
     done
     else
       echo "U-Boot Return Main Menu!"
@@ -129,13 +132,13 @@ kernel() {
 
   if [ $? -eq 0 ]; then
     for VERSION in $kernel; do
-	echo -e "\n[KERNEL] Download Linux Kernel -> "$VERSION"\n"
-	git clone -b $VERSION --depth 1 $MIRROR_KERNEL $VERSION && cd $VERSION
-	git checkout -b $VERSION --quiet && git status
-        make ARCH=arm CROSS_COMPILE=${CC} distclean
-        make ARCH=arm CROSS_COMPILE=${CC} defconfig
-        make ARCH=arm CROSS_COMPILE=${CC}
-        cd ../../
+      echo -e "\n[KERNEL] Download Linux Kernel -> "$VERSION"\n"
+      git clone -b $VERSION --depth 1 $MIRROR_KERNEL $VERSION && cd $VERSION
+      git checkout -b $VERSION --quiet && git status
+      make ARCH=arm CROSS_COMPILE=${CC} distclean
+      make ARCH=arm CROSS_COMPILE=${CC} defconfig
+      make ARCH=arm CROSS_COMPILE=${CC}
+      cd ../../
     done
     else
       echo "Kernel Return Main Menu!"
@@ -186,30 +189,24 @@ update_bash_profile_gcc() {
 
     [ -z "$new_prefix" ] && { echo "[ERRO] Prefixo vazio no update_bash_profile_gcc"; return 1; }
 
-    echo -e "\n[INFO] Limpando entradas antigas do GCC ARM no $profile"
     sed -i 's|^\(CC=.*arm-linux-gnueabihf-.*\)|#\1|g' "$profile"
-    echo "export CC=\"$new_prefix\"" >> "$profile"
-    echo 'export PATH="$(dirname $CC):$PATH"' >> "$profile"
-    echo "[INFO] Novo GCC definido com sucesso."
+    echo "export CC=\"$new_prefix\"" >> "$profile" && echo 'export PATH="$(dirname $CC):$PATH"' >> "$profile"
 }
 
 # armx main menu.
 while true;
 do
-  main=`zenity --title="ARMX."\
-               --width=$WIDTH\
-	             --height=$HEIGHT\
-               --list\
+  main=`zenity --title="ARMX." --width=$WIDTH --height=$HEIGHT --list\
 	             --column="Configure Packages:"\
                         "ARM Cross Compiler: GCC"\
                         "Bootloader: U-Boot"\
                         "Linux Kernel"\
                         "Root File System"\
                         "Install Kernel and Root File System"\
-			                   "Virtual ARM with KVM/QEMU"`
+			                  "Virtual ARM with KVM/QEMU"`
 
   case "${main}" in
-    "ARM Cross Compiler: GCC") compiler 2>/dev/null;;
+    "ARM Cross Compiler: GCC") compiler;;
     "Bootloader: U-Boot") bootloader;;
     "Linux Kernel") kernel;;
     "Root File System") file_system;;
