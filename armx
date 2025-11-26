@@ -2,13 +2,13 @@
 
 source ./.config
 
-# backup project into home folder.
+# backup project.
 backup_project() {
   tar -cf $ID-$(date +%d-%m)-bkp.tar.gz .build_$ID
   mv *-bkp.tar.gz $HOME
 }
 
-# check project name.
+# check name.
 if [ -d .*_${ID} ]; then
   cd .*_${ID}
 else
@@ -18,9 +18,12 @@ fi
 # project sources.
 DIR_BUILD=.build_${ID}
 
-# compilers.
-compiler() {
+# compiler.
+compiler()
+{
   pkglist=""
+  
+  # tag list.
   versions=$(curl -s "$MIRROR_LINARO"|grep binaries|sed -e "s/<a href=\"\/components\/toolchain\/binaries\///g"|sed 's/\/"//g'|sort)
 
   for pkg in $versions;
@@ -46,34 +49,63 @@ compiler() {
         GCC=$(curl -s "$MIRROR_LINARO$VERSION$HARD_FLOAT"|grep -E "$HARD_FLOAT_ARCH")
         GCC=$(echo $GCC|sed -e "s/<a href=\"\/components\/toolchain\/binaries\/"$VERSION"\/arm-linux-gnueabihf//g")
         GCC=${GCC:1:-1};
+        
+        # project compiler.
         mkdir -p $GCC_BUILD_NAME
+        GCC_FOLDER="${GCC%.tar.*}"
+        DIR_VERSION="$GCC_BUILD_NAME/$GCC_FOLDER"
+        
+        if [ -d "$DIR_VERSION" ]; then
+          
+          echo -e "\n[ARMX] This version of compiler exists!\n"
+          
+          # reconstruir valor de BINARY.
+          BINARY=$(basename "$DIR_VERSION")
 
-        # download compiler.
-        echo -e "\n[GCC] Download GCC ARM Compiler -> "$VERSION"\n"
-        curl $MIRROR_LINARO$VERSION$HARD_FLOAT$GCC -L -O
+          # update bash profile.
+          PREFIX="$PWD/$GCC_BUILD_NAME/$BINARY/bin/arm-linux-gnueabihf-"
+          update_bash_profile_gcc "$PREFIX"
+          source ~/.bash_profile
 
-        # extract compiler.
-        echo -e "\n[GCC] Extract GCC ARM Compiler -> "$GCC""
-        tar -xf $GCC && rm -f $GCC && BINARY=$(ls -d gcc*arm-linux-gnueabihf) && mv $BINARY $GCC_BUILD_NAME
+          # test gcc compiler.
+          ${CC}gcc --version | grep "$VERSION"
 
-        # update bash profile.
-        PREFIX="$PWD/$GCC_BUILD_NAME/$BINARY/bin/arm-linux-gnueabihf-"
-        update_bash_profile_gcc "$PREFIX"
-        source ~/.bash_profile
+        else
 
-        # test gcc compiler.
-        ${CC}gcc --version | grep "$VERSION"
+          echo -e "\n[ARMX] Downloading the compiler -> "$VERSION"\n"
+
+          # download compiler.
+          curl $MIRROR_LINARO$VERSION$HARD_FLOAT$GCC -L -O
+
+          # extract compiler.
+          echo -e "\n[ARMX] Extract GCC ARM Compiler -> "$GCC""
+          tar -xf $GCC && rm -f $GCC && BINARY=$(ls -d gcc*arm-linux-gnueabihf) && mv $BINARY $GCC_BUILD_NAME
+
+          # update bash profile.
+          PREFIX="$PWD/$GCC_BUILD_NAME/$BINARY/bin/arm-linux-gnueabihf-"
+          update_bash_profile_gcc "$PREFIX"
+          source ~/.bash_profile
+
+          # test gcc compiler.
+          ${CC}gcc --version | grep "$VERSION"
+
+        fi
     done
     else
       echo "[ARMX] GCC Return Main Menu!"
   fi
 }
 
-# bootloaders.
-bootloader() {
+# bootloader.
+bootloader()
+{
   pkglist=""
+
+  # git commands.
   git init $UBOOT_BUILD_NAME --quiet && cd $UBOOT_BUILD_NAME
   git remote add master $MIRROR_UBOOT
+  
+  # tag list.
   UBOOT_LIST=$(git ls-remote --tags $MIRROR_UBOOT|awk '{gsub("refs/tags/","");print $2}'|grep "v.*[^}]$"|sort)
 
   for pkg in $UBOOT_LIST; do
@@ -93,27 +125,31 @@ bootloader() {
 
   if [ $? -eq 0 ]; then
     for VERSION in $uboot; do
-      echo -e "\n[U-BOOT] Download Bootloader -> "$VERSION"\n"
-        
-      git clone -b $VERSION --depth 1 $MIRROR_UBOOT $VERSION && cd $VERSION
-      # git checkout -b $VERSION --quiet && git status
-      git switch -c "build-$VERSION" --quiet && git status
-      git status
+      echo -e "\n[ARMX] Download Bootloader -> "$VERSION"\n"
+
+      git clone $MIRROR_UBOOT $VERSION --quiet && cd $VERSION
+
       make ARCH=arm CROSS_COMPILE=${CC} distclean
       make ARCH=arm CROSS_COMPILE=${CC} qemu_arm_defconfig
       make ARCH=arm CROSS_COMPILE=${CC}
+      
       cd ../../
     done
     else
-      echo "U-Boot Return Main Menu!"
+      echo -e "\n[ARMX] Return Main Menu!"
   fi
 }
 
-# linux kernel.
-kernel() {
+# kernel.
+kernel()
+{
   pkglist=""
+
+  # git commands.
   git init $KERNEL_BUILD_NAME --quiet && cd $KERNEL_BUILD_NAME
   git remote add master $MIRROR_KERNEL
+
+  # tag list adjust.
   tag_list=$(git ls-remote --tags $MIRROR_KERNEL|awk '{gsub("refs/tags/","");print $2}'|grep ".*[^}]$"|sort)
   KERNEL_LIST=${tag_list::-3}
 
@@ -141,14 +177,18 @@ kernel() {
       cd ../../
     done
     else
-      echo "Kernel Return Main Menu!"
+      echo -e "\n[ARMX] Return Main Menu!"
   fi
 }
 
 # rtfs.
-file_system() {
+file_system()
+{
   pkglist=""
+  
+  # tag list.
   RTFS_LIST=$(curl -s $MIRROR_FS|sed -nr 's/(.*)href="?([^ ">]*).*/\2\n\1/; T; P; D;')
+  
   mkdir -p $RTFS_BUILD_NAME
 
   for pkg in $RTFS_LIST; do
@@ -156,12 +196,12 @@ file_system() {
   done
 
   rtfs=`zenity --title="Root File System List"\
-                  --width=$WIDTH\
-                  --height=$HEIGHT\
-                  --text="Choose item:"\
-                  --list --column="Selected"\
-                  --column="Root File System"\
-                  --radiolist $pkglist`
+               --width=$WIDTH\
+               --height=$HEIGHT\
+               --text="Choose item:"\
+               --list --column="Selected"\
+               --column="Root File System"\
+               --radiolist $pkglist`
 
   if [ $? -eq 0 ]; then
     for VERSION in $rtfs; do
