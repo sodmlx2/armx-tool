@@ -18,9 +18,15 @@ fi
 # project sources.
 DIR_BUILD=.build_${ID}
 
+# update bash profile.
+update() {
+  PREFIX="$PWD/$GCC_BUILD_NAME/$BINARY/bin/arm-linux-gnueabihf-"
+  update_bash_profile_gcc "$PREFIX"
+  source ~/.bash_profile
+}
+
 # compiler.
-compiler()
-{
+compiler() {
   pkglist=""
   
   # tag list.
@@ -55,20 +61,18 @@ compiler()
         GCC_FOLDER="${GCC%.tar.*}"
         DIR_VERSION="$GCC_BUILD_NAME/$GCC_FOLDER"
         
+        # verify compiler.
         if [ -d "$DIR_VERSION" ]; then
           
           echo -e "\n[ARMX] This version of compiler exists!\n"
           
-          # reconstruir valor de BINARY.
+          # adjust value.
           BINARY=$(basename "$DIR_VERSION")
 
           # update bash profile.
           PREFIX="$PWD/$GCC_BUILD_NAME/$BINARY/bin/arm-linux-gnueabihf-"
           update_bash_profile_gcc "$PREFIX"
           source ~/.bash_profile
-
-          # test gcc compiler.
-          ${CC}gcc --version | grep "$VERSION"
 
         else
 
@@ -86,25 +90,20 @@ compiler()
           update_bash_profile_gcc "$PREFIX"
           source ~/.bash_profile
 
-          # test gcc compiler.
-          ${CC}gcc --version | grep "$VERSION"
-
         fi
     done
-    else
-      echo "[ARMX] GCC Return Main Menu!"
-  fi
+  else
+    echo "[ARMX] GCC Return Main Menu!"
+fi
+
 }
 
 # bootloader.
-bootloader()
-{
+bootloader() {
   pkglist=""
-
-  # git commands.
-  git init $UBOOT_BUILD_NAME --quiet && cd $UBOOT_BUILD_NAME
-  git remote add master $MIRROR_UBOOT
   
+  mkdir -p $UBOOT_BUILD_NAME && cd $UBOOT_BUILD_NAME
+
   # tag list.
   UBOOT_LIST=$(git ls-remote --tags $MIRROR_UBOOT|awk '{gsub("refs/tags/","");print $2}'|grep "v.*[^}]$"|sort)
 
@@ -125,15 +124,29 @@ bootloader()
 
   if [ $? -eq 0 ]; then
     for VERSION in $uboot; do
-      echo -e "\n[ARMX] Download Bootloader -> "$VERSION"\n"
-
-      git clone $MIRROR_UBOOT $VERSION --quiet && cd $VERSION
-
-      make ARCH=arm CROSS_COMPILE=${CC} distclean
-      make ARCH=arm CROSS_COMPILE=${CC} qemu_arm_defconfig
-      make ARCH=arm CROSS_COMPILE=${CC}
       
-      cd ../../
+      DIR_VERSION_UBOOT="$VERSION"
+
+      # echo -e "\n$UBOOT_BUILD_NAME"
+      
+        # verify compiler.
+        if [ -d "$DIR_VERSION_UBOOT" ]; then
+          
+          echo -e "\n[ARMX] This version ("$DIR_VERSION_UBOOT") of bootloader exists! \n"
+
+          update;
+          cd $DIR_VERSION_UBOOT
+          make ARCH=arm CROSS_COMPILE=${CC} distclean
+          make ARCH=arm CROSS_COMPILE=${CC} qemu_arm_defconfig
+          make ARCH=arm CROSS_COMPILE=${CC} menuconfig
+        else
+          echo -e "\n[ARMX] Download Bootloader -> "$VERSION"\n"
+
+          git clone $MIRROR_UBOOT --depth 1 $VERSION
+          make ARCH=arm CROSS_COMPILE=${CC} distclean
+          make ARCH=arm CROSS_COMPILE=${CC} qemu_arm_defconfig
+          make ARCH=arm CROSS_COMPILE=${CC} menuconfig
+        fi
     done
     else
       echo -e "\n[ARMX] Return Main Menu!"
@@ -141,8 +154,7 @@ bootloader()
 }
 
 # kernel.
-kernel()
-{
+kernel() {
   pkglist=""
 
   # git commands.
@@ -182,8 +194,7 @@ kernel()
 }
 
 # rtfs.
-file_system()
-{
+file_system() {
   pkglist=""
   
   # tag list.
@@ -205,9 +216,9 @@ file_system()
 
   if [ $? -eq 0 ]; then
     for VERSION in $rtfs; do
-	echo -e "\n[RTFS] Download Root File System -> "$VERSION"\n"
-        curl $MIRROR_FS$VERSION -L -O && rm -f $MIRROR_FS$VERSION
-        BINARY=$(ls -d alpine*-*) && mv $BINARY $RTFS_BUILD_NAME && cd ../../
+      echo -e "\n[RTFS] Download Root File System -> "$VERSION"\n"
+      curl $MIRROR_FS$VERSION -L -O && rm -f $MIRROR_FS$VERSION
+      BINARY=$(ls -d alpine*-*) && mv $BINARY $RTFS_BUILD_NAME && cd ../../
     done
     else
       echo "RTFS Return Main Menu!"
