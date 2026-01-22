@@ -18,7 +18,7 @@
 ### Instalação (Debian/Ubuntu):
 ```bash
 sudo apt-get install -y build-essential bison flex libncurses5-dev libncursesw5-dev libssl-dev libgnutls28-dev
-
+```
 
 ## 🛠️ Registro de Alterações (Changelog)
 
