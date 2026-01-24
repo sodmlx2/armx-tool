@@ -20,6 +20,15 @@
 sudo apt-get install -y build-essential bison flex libncurses5-dev libncursesw5-dev libssl-dev libgnutls28-dev
 ```
 
+### Instalação (Red Hat/Fedora):
+```bash
+sudo dnf groupinstall -y "Development Tools" "C Development Tools and Libraries"
+```
+
+```bash
+sudo dnf install -y bison flex ncurses-devel openssl-devel gnutls-devel zenity curl sed gawk
+```
+
 ## 🛠️ Registro de Alterações (Changelog)
 
 ### ✅ Correções (FIX)
