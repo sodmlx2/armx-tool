@@ -1,6 +1,6 @@
 # 🛠️ ARMX-TOOL 
 
-> **Versão:** `furia-v1.7 (dev)`
+> **Versão:** `furia-v1.7 (dev)`  
 > **Sistema:** Linux (Cross-Compile Workspace Tool)
 
 ---
