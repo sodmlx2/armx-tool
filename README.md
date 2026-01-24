@@ -5,14 +5,14 @@
 
 ---
 
-## 🎯 OBJETIVOS:
+## 🎯 Objetivos:
 * Facility cross compile (CC) workspace configuration and kernel compile process.
 * Running in the most principal linux distros ;)
 * Useful to study linux kernel source code.
 
 ---
 
-## 📦 DEPENDÊNCIAS:
+## 📦 Dependências:
 * **Linux packages:** `git`, `zenity`, `curl`, `sed`, `awk`, `sort` e `bash`.
 
 ### Instalação (Debian/Ubuntu):
