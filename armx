@@ -27,8 +27,9 @@ update() {
 
 # compiler.
 compiler() {
+
   pkglist=""
-  
+
   # tag list.
   versions=$(curl -s "$MIRROR_LINARO"|grep binaries|sed -e "s/<a href=\"\/components\/toolchain\/binaries\///g"|sed 's/\/"//g'|sort)
 
@@ -43,7 +44,7 @@ compiler() {
                        --text="Choose item:"\
                        --list\
                        --column="Selected"\
-  		                 --column="Linaro Toolchain Package"\
+  		       --column="Linaro Toolchain Package"\
                        --radiolist $pkglist\
                        --ok-label="Build Source"\
                        --cancel-label="Back"`
@@ -55,23 +56,21 @@ compiler() {
         GCC=$(curl -s "$MIRROR_LINARO$VERSION$HARD_FLOAT"|grep -E "$HARD_FLOAT_ARCH")
         GCC=$(echo $GCC|sed -e "s/<a href=\"\/components\/toolchain\/binaries\/"$VERSION"\/arm-linux-gnueabihf//g")
         GCC=${GCC:1:-1};
-        
+
         # project compiler.
         mkdir -p $GCC_BUILD_NAME
         GCC_FOLDER="${GCC%.tar.*}"
         DIR_VERSION="$GCC_BUILD_NAME/$GCC_FOLDER"
-        
+
         # verify compiler.
         if [ -d "$DIR_VERSION" ]; then
-          
+
           echo -e "\n[ARMX] This version of compiler exists!\n"
-          
+
           # adjust value.
           BINARY=$(basename "$DIR_VERSION")
 
           # update bash profile.
-          PREFIX="$PWD/$GCC_BUILD_NAME/$BINARY/bin/arm-linux-gnueabihf-"
-          update_bash_profile_gcc "$PREFIX"
           source ~/.bash_profile
 
         else
@@ -141,7 +140,8 @@ bootloader() {
           make ARCH=arm CROSS_COMPILE=${CC} menuconfig
         else
           echo -e "\n[ARMX] Download Bootloader -> "$VERSION"\n"
-
+          update;
+          cd $DIR_VERSION_UBOOT
           git clone $MIRROR_UBOOT --depth 1 $VERSION
           make ARCH=arm CROSS_COMPILE=${CC} distclean
           make ARCH=arm CROSS_COMPILE=${CC} qemu_arm_defconfig
