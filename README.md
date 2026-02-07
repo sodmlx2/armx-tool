@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # ARMX-TOOL 🛠️
 
 > **Versão:** `furia-v1.7 (dev)`
@@ -40,6 +39,7 @@ O funcionamento do compilador é validado através do comando:
 
 ```bash
 ${CC}gcc --version | grep $VERSION
+
 =======
 ## 🛠️ ARMX-TOOL 
 
@@ -88,7 +88,3 @@ sudo dnf install -y bison flex ncurses-devel openssl-devel gnutls-devel zenity c
 
 ## 🧪 Testes de Validação
 O funcionamento do compilador é validado através do comando:
-
-```bash
-${CC}gcc --version | grep $VERSION
->>>>>>> b60a40f8297b23a1b134d30bea5f06baec02aac1
