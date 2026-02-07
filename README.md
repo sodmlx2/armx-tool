@@ -88,3 +88,4 @@ sudo dnf install -y bison flex ncurses-devel openssl-devel gnutls-devel zenity c
 
 ## 🧪 Testes de Validação
 O funcionamento do compilador é validado através do comando:
+
