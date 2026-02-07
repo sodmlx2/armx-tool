@@ -20,6 +20,12 @@ DIR_BUILD=.build_${ID}
 
 # update bash profile.
 update() {
+  
+  echo "testes variaveis"
+  echo $PWD
+  echo $GCC_BUILD_NAME
+  echo $BINARY
+
   PREFIX="$PWD/$GCC_BUILD_NAME/$BINARY/bin/arm-linux-gnueabihf-"
   update_bash_profile_gcc "$PREFIX"
   source ~/.bash_profile
@@ -71,7 +77,7 @@ compiler() {
           BINARY=$(basename "$DIR_VERSION")
 
           # update bash profile.
-          source ~/.bash_profile
+          source ~/.update_bash_profile_gcc
 
         else
 
@@ -94,14 +100,18 @@ compiler() {
   else
     echo "[ARMX] GCC Return Main Menu!"
 fi
-
 }
 
 # bootloader.
 bootloader() {
+
+  # verify compiler.
+  check_and_setup_compiler || return 1
+
   pkglist=""
   
-  mkdir -p $UBOOT_BUILD_NAME && cd $UBOOT_BUILD_NAME
+  mkdir -p $UBOOT_BUILD_NAME
+  pushd $UBOOT_BUILD_NAME > /dev/null
 
   # tag list.
   UBOOT_LIST=$(git ls-remote --tags $MIRROR_UBOOT|awk '{gsub("refs/tags/","");print $2}'|grep "v.*[^}]$"|sort)
@@ -123,34 +133,46 @@ bootloader() {
 
   if [ $? -eq 0 ]; then
     for VERSION in $uboot; do
-      
+
       DIR_VERSION_UBOOT="$VERSION"
 
-      # echo -e "\n$UBOOT_BUILD_NAME"
-      
-        # verify compiler.
+      # verify compiler.
         if [ -d "$DIR_VERSION_UBOOT" ]; then
-          
+
           echo -e "\n[ARMX] This version ("$DIR_VERSION_UBOOT") of bootloader exists! \n"
 
-          update;
-          cd $DIR_VERSION_UBOOT
+          echo $DIR_VERSION_UBOOT
+
+          # update;
+          
+          pushd $DIR_VERSION_UBOOT > /dev/null && ls
+
           make ARCH=arm CROSS_COMPILE=${CC} distclean
           make ARCH=arm CROSS_COMPILE=${CC} qemu_arm_defconfig
           make ARCH=arm CROSS_COMPILE=${CC} menuconfig
+          
+          popd > /dev/null
         else
+          
           echo -e "\n[ARMX] Download Bootloader -> "$VERSION"\n"
-          update;
-          cd $DIR_VERSION_UBOOT
+          
+          # update;
           git clone $MIRROR_UBOOT --depth 1 $VERSION
+          
+          pushd $DIR_VERSION_UBOOT > /dev/null && ls
+
           make ARCH=arm CROSS_COMPILE=${CC} distclean
           make ARCH=arm CROSS_COMPILE=${CC} qemu_arm_defconfig
           make ARCH=arm CROSS_COMPILE=${CC} menuconfig
+          
+          popd > /dev/null
         fi
     done
     else
       echo -e "\n[ARMX] Return Main Menu!"
   fi
+  
+  popd > /dev/null
 }
 
 # kernel.
@@ -158,8 +180,10 @@ kernel() {
   pkglist=""
 
   # git commands.
-  git init $KERNEL_BUILD_NAME --quiet && cd $KERNEL_BUILD_NAME
-  git remote add master $MIRROR_KERNEL
+  mkdir -p $KERNEL_BUILD_NAME
+  pushd $KERNEL_BUILD_NAME > /dev/null
+  git init . --quiet
+  git remote add master $MIRROR_KERNEL 2>/dev/null || true
 
   # tag list adjust.
   tag_list=$(git ls-remote --tags $MIRROR_KERNEL|awk '{gsub("refs/tags/","");print $2}'|grep ".*[^}]$"|sort)
@@ -181,16 +205,26 @@ kernel() {
   if [ $? -eq 0 ]; then
     for VERSION in $kernel; do
       echo -e "\n[KERNEL] Download Linux Kernel -> "$VERSION"\n"
-      git clone -b $VERSION --depth 1 $MIRROR_KERNEL $VERSION && cd $VERSION
-      git checkout -b $VERSION --quiet && git status
+      
+      if [ ! -d "$VERSION" ]; then
+          git clone -b $VERSION --depth 1 $MIRROR_KERNEL $VERSION
+      fi
+      
+      pushd $VERSION > /dev/null
+      
+      git checkout -b $VERSION --quiet 2>/dev/null || true
+      git status
       make ARCH=arm CROSS_COMPILE=${CC} distclean
       make ARCH=arm CROSS_COMPILE=${CC} defconfig
       make ARCH=arm CROSS_COMPILE=${CC}
-      cd ../../
+      
+      popd > /dev/null
     done
     else
       echo -e "\n[ARMX] Return Main Menu!"
   fi
+  
+  popd > /dev/null
 }
 
 # rtfs.
@@ -218,7 +252,7 @@ file_system() {
     for VERSION in $rtfs; do
       echo -e "\n[RTFS] Download Root File System -> "$VERSION"\n"
       curl $MIRROR_FS$VERSION -L -O && rm -f $MIRROR_FS$VERSION
-      BINARY=$(ls -d alpine*-*) && mv $BINARY $RTFS_BUILD_NAME && cd ../../
+      BINARY=$(ls -d alpine*-*) && mv $BINARY $RTFS_BUILD_NAME
     done
     else
       echo "RTFS Return Main Menu!"
@@ -241,10 +275,30 @@ update_bash_profile_gcc() {
     [ -z "$new_prefix" ] && { echo "[ERRO] Prefixo vazio no update_bash_profile_gcc"; return 1; }
 
     sed -i 's|^\(CC=.*arm-linux-gnueabihf-.*\)|#\1|g' "$profile"
-    echo "export CC=\"$new_prefix\"" >> "$profile" && echo 'export PATH="$(dirname $CC):$PATH"' >> "$profile"
+    echo -e "\n export CC=\"$new_prefix\"" >> "$profile" && echo 'export PATH="$(dirname $CC):$PATH"' >> "$profile"
 }
 
-# armx main menu.
+# Verifica se o compilador já existe e configura o PATH/CC
+check_and_setup_compiler() {
+    # Procura por qualquer pasta que comece com gcc dentro do diretório de builds
+    # Ajuste o caminho conforme sua estrutura
+    local SEARCH_PATH="./$GCC_BUILD_NAME"
+    
+    # Tenta encontrar o binário do compilador já existente
+    local EXISTING_BIN=$(find "$SEARCH_PATH" -name "arm-linux-gnueabihf-gcc" -type f | head -n 1)
+
+    if [ -f "$EXISTING_BIN" ]; then
+        # Extrai o prefixo (remove o 'gcc' do final)
+        export CC="${EXISTING_BIN%gcc}"
+        echo -e "[ARMX] Compilador detectado em: $CC"
+    else
+        # Se não encontrou e não estamos na função compiler, avisa o usuário
+        zenity --error --text="Compilador não encontrado! Por favor, execute a opção 'ARM Cross Compiler: GCC' primeiro."
+        return 1
+    fi
+}
+
+# Main.
 while true;
 do
   main=`zenity --title="ARMX." --width=$WIDTH --height=$HEIGHT --list\
