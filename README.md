@@ -40,15 +40,7 @@ sudo dnf install -y bison flex ncurses-devel openssl-devel gnutls-devel zenity c
 * [ ] Suporte a múltiplos mirrors para Bootloader, Compilador e RTFS.
 * [ ] Implementar verificação de projetos existentes ao rodar o comando `armx init`.
 * [ ] Refinar o output de erro nos logs de compilação.
-
 ---
-
-## 🧪 Testes de Validação
-O funcionamento do compilador é validado através do comando:
-
-```bash
-
-```
 
 ## 🛠️ Registro de Alterações (Changelog)
 
@@ -66,6 +58,7 @@ O funcionamento do compilador é validado através do comando:
 
 ## 🧪 Testes de Validação
 O funcionamento do compilador é validado através do comando:
+
 
 
 
