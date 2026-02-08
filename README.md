@@ -50,15 +50,6 @@ O funcionamento do compilador é validado através do comando:
 
 ```
 
-### Instalação (Red Hat/Fedora):
-```bash
-sudo dnf groupinstall -y "Development Tools" "C Development Tools and Libraries"
-```
-
-```bash
-sudo dnf install -y bison flex ncurses-devel openssl-devel gnutls-devel zenity curl sed gawk
-```
-
 ## 🛠️ Registro de Alterações (Changelog)
 
 ### ✅ Correções (FIX)
@@ -75,5 +66,6 @@ sudo dnf install -y bison flex ncurses-devel openssl-devel gnutls-devel zenity c
 
 ## 🧪 Testes de Validação
 O funcionamento do compilador é validado através do comando:
+
 
 
