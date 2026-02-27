@@ -1,5 +1,5 @@
 
-> **armx-tool:** Linux (Cross-Compile Workspace Tool)
+**armx-tool:** Linux (Cross-Compile Workspace Tool)
 
 ---
 
@@ -28,5 +28,6 @@ sudo dnf install -y bison flex ncurses-devel openssl-devel gnutls-devel zenity c
 * **Git Clone:** Removida a flag `--depth 1` dos repositórios (Compiler/Bootloader) para permitir acesso ao histórico completo.
 
 ---
+
 
 
