@@ -6,10 +6,7 @@
 * Facility cross compile (CC) workspace configuration and kernel compile process.
 * Running in the most principal linux distros ;)
 * Useful to study linux kernel source code.
-
----
-
-* **Linux packages:** `zenity`.
+* Using `zenity`.
 
 ### Linux Development.
 
@@ -31,4 +28,5 @@ sudo dnf install -y bison flex ncurses-devel openssl-devel gnutls-devel zenity c
 * **Git Clone:** Removida a flag `--depth 1` dos repositórios (Compiler/Bootloader) para permitir acesso ao histórico completo.
 
 ---
+
 
