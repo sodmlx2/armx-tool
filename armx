@@ -20,12 +20,6 @@ DIR_BUILD=.build_${ID}
 
 # update bash profile.
 update() {
-  
-  echo "testes variaveis"
-  echo $PWD
-  echo $GCC_BUILD_NAME
-  echo $BINARY
-
   PREFIX="$PWD/$GCC_BUILD_NAME/$BINARY/bin/arm-linux-gnueabihf-"
   update_bash_profile_gcc "$PREFIX"
   source ~/.bash_profile
@@ -143,7 +137,7 @@ bootloader() {
 
           echo $DIR_VERSION_UBOOT
 
-          # update;
+          update
           
           pushd $DIR_VERSION_UBOOT > /dev/null && ls
 
@@ -259,14 +253,6 @@ file_system() {
   fi
 }
 
-build(){
-  echo "testing..."
-}
-
-kvm(){
-  echo "testing..."
-}
-
 # update user profile.
 update_bash_profile_gcc() {
     local profile="$HOME/.bash_profile"
@@ -303,7 +289,7 @@ while true;
 do
   main=`zenity --title="ARMX." --width=$WIDTH --height=$HEIGHT --list\
 	             --column="Configure Packages:"\
-                        "ARM Cross Compiler: GCC"\
+                        "Cross Compiler: GCC"\
                         "Bootloader: U-Boot"\
                         "Linux Kernel"\
                         "Root File System"\
@@ -311,7 +297,7 @@ do
 			                  "Virtual ARM with KVM/QEMU"`
 
   case "${main}" in
-    "ARM Cross Compiler: GCC") compiler;;
+    "Cross Compiler: GCC") compiler;;
     "Bootloader: U-Boot") bootloader;;
     "Linux Kernel") kernel;;
     "Root File System") file_system;;
