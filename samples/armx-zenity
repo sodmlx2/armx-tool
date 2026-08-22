@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# old zenity interface! using only for ˜sample˜ purpose!
+# Zenity GUI for ARM Cross Compiler, Bootloader, Kernel and Root File System.
 
 # load project settings.
-source ./config
+source ./../config
 
 # backup project.
 backup_project() {
